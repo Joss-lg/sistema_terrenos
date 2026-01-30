@@ -103,7 +103,11 @@
                                      style="font-size:1.02rem;letter-spacing:.06em;color:#0f172a;">
                                     {{ $categoria }}
                                 </div>
+<<<<<<< HEAD
                                
+=======
+                                <small class="text-muted">Categoría del Terreno</small>
+>>>>>>> origin/adaneli
                             </div>
 
                             <span class="px-3 py-1"

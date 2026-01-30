@@ -32,7 +32,11 @@ input[type=number] {
                 Agregar Terreno
             </h3>
             <div style="color:rgba(255,255,255,.70); font-size:.95rem;" class="mt-1">
+<<<<<<< HEAD
         
+=======
+                Captura la información técnica y categoría del terreno.
+>>>>>>> origin/adaneli
             </div>
         </div>
 
@@ -78,6 +82,7 @@ input[type=number] {
 
                     {{-- CATEGORIA --}}
                     <div class="col-12 col-md-6">
+<<<<<<< HEAD
                         <label class="form-label fw-bold" style="color:#0d2c4b;">Categoría</label>
                         <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
                             <span class="input-group-text border-0"
@@ -86,6 +91,16 @@ input[type=number] {
                             </span>
                             <select name="categoria" class="form-select border-0 p-3"
                                     style="background:#f1f5f9; color:#000000;" required>
+=======
+                        <label class="form-label fw-semibold" style="color:#0f172a;">Categoría</label>
+                        <div class="input-group">
+                            <span class="input-group-text"
+                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
+                                🏷️
+                            </span>
+                            <select name="categoria" class="form-select"
+                                    style="border-radius:0 14px 14px 0;" required>
+>>>>>>> origin/adaneli
                                 <option value="">-- Selecciona --</option>
                                 <option value="Basico" {{ old('categoria') == 'Basico' ? 'selected' : '' }}>Basico</option>
                                 <option value="Medio" {{ old('categoria') == 'Medio' ? 'selected' : '' }}>Medio</option>
@@ -102,8 +117,13 @@ input[type=number] {
                                   style="background:#f1f5f9; color:#0d2c4b;">
                                 ✅
                             </span>
+<<<<<<< HEAD
                             <select name="estado" class="form-select border-0 p-3"
                                     style="background:#f1f5f9; color:#000000;" required>
+=======
+                            <select name="estado" class="form-select"
+                                    style="border-radius:0 14px 14px 0;" required>
+>>>>>>> origin/adaneli
                                 <option value="disponible" {{ old('estado') == 'disponible' ? 'selected' : '' }}>DISPONIBLE</option>
                                 <option value="agotado" {{ old('estado') == 'agotado' ? 'selected' : '' }}>AGOTADO</option>
                             </select>
@@ -112,6 +132,7 @@ input[type=number] {
 
                     {{-- COLONIA --}}
                     <div class="col-12 col-md-6">
+<<<<<<< HEAD
                         <label class="form-label fw-bold" style="color:#0d2c4b;">Colonia</label>
                         <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
                             <span class="input-group-text border-0"
@@ -122,16 +143,35 @@ input[type=number] {
                                    name="colonia"
                                    value="{{ old('colonia') }}"
                                    style="background:#f1f5f9; color:#000000;"
+=======
+                        <label class="form-label fw-semibold" style="color:#0f172a;">Colonia</label>
+                        <div class="input-group">
+                            <span class="input-group-text"
+                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
+                                📍
+                            </span>
+                            <input type="text" class="form-control"
+                                   name="colonia"
+                                   value="{{ old('colonia') }}"
+                                   style="border-radius:0 14px 14px 0;"
+>>>>>>> origin/adaneli
                                    placeholder="Ej. Santa María">
                         </div>
                     </div>
 
                     {{-- UBICACION --}}
                     <div class="col-12 col-md-6">
+<<<<<<< HEAD
                         <label class="form-label fw-bold" style="color:#0d2c4b;">Ubicación </label>
                         <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
                             <span class="input-group-text border-0"
                                   style="background:#f1f5f9; color:#0d2c4b;">
+=======
+                        <label class="form-label fw-semibold" style="color:#0f172a;">Ubicación </label>
+                        <div class="input-group">
+                            <span class="input-group-text"
+                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
+>>>>>>> origin/adaneli
                                 🧭
                             </span>
                             <input type="text" class="form-control border-0 p-3"
@@ -167,7 +207,11 @@ input[type=number] {
                             $badge = match($estadoPrev) {
                                 'DISPONIBLE' => 'background:#dcfce7;color:#166534;border:1px solid #86efac;',
                                 'AGOTADO'    => 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;',
+<<<<<<< HEAD
                                 default      => 'background:#f1f5f9;color:#0d2c4b;border:1px solid #e2e8f0;',
+=======
+                                default      => 'background:#e5e7eb;color:#111827;border:1px solid #cbd5e1;',
+>>>>>>> origin/adaneli
                             };
                         @endphp
 
@@ -179,7 +223,10 @@ input[type=number] {
                             </div>
                         </div>
                     </div>
+<<<<<<< HEAD
                 </div>
+=======
+>>>>>>> origin/adaneli
 
                 {{-- BOTONES --}}
                 <div class="d-flex gap-3 justify-content-end mt-5 pt-3 border-top">

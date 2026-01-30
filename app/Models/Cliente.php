@@ -11,9 +11,13 @@ class Cliente extends Model
 
     // Nombre de la tabla
     protected $table = 'clientes';
+
         protected $primaryKey = 'id';
 
  
+
+    protected $primaryKey = 'id';
+
     public $timestamps = true;
 
     protected $fillable = [
@@ -24,4 +28,11 @@ class Cliente extends Model
         'direccion',
         'fecha_compra',
     ];
+
+    
+    public function compras()
+    {
+        return $this->hasMany(Compra::class, 'cliente_id');
+    }
+
 }
