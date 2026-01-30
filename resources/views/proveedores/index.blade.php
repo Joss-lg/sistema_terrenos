@@ -12,7 +12,7 @@
                 <i class="fas fa-truck me-2"></i> Registrar Nuevo Proveedor
             </a>
         @endif
-    </div>
+    </div>    
 
     {{-- Tabla --}}
     <div class="table-responsive">

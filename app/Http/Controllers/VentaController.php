@@ -3,261 +3,130 @@
 namespace App\Http\Controllers;
 
 use App\Models\Terreno;
-use App\Models\Caja;
-use App\Models\Categoria;
-use App\Models\Producto;
 use App\Models\Venta;
-use App\Models\DetalleVenta;
-use App\Models\Inventario;
 use App\Models\Cliente;
-use App\Models\PagoVenta; // ✅ NUEVO
-
+use App\Models\PagoVenta;
+use App\Models\Inventario;
+use App\Models\DetalleVenta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
-
-use PDF;
 
 class VentaController extends Controller
 {
     /**
-     * Muestra la interfaz del Punto de Venta (TPV).
-     */
-    public function tpv()
-    {
-        // 1. Verificar si la caja está abierta
-        // ✅ Usar caja sistema (ya no abierta/cerrada)
-        $cajaAbierta = $this->cajaSistema();
-
-        }
-
-        // 2. Datos TPV
-        $categorias = Categoria::orderBy('nombre')->get();
-
-        $productos = Producto::with('inventario', 'categoria')
-            ->whereHas('inventario', function ($query) {
-                $query->where('stock', '>', 0);
-            })
-            // ✅ IMPORTANTE: aquí NO debe ir "cliente"
-            // Usa un campo real de productos (elige el que tengas): nombre / descripcion / id
-            ->orderBy('nombre', 'asc')
-            ->get();
-
-        // ✅ Tu tabla clientes usa columna "cliente"
-        $clientes = Cliente::select('id', 'cliente', 'telefono', 'direccion')
-            ->orderBy('cliente', 'asc')
-            ->get();
-
-        // ✅ Terrenos disponibles
-        $terrenos = Terreno::where('estado', 'disponible')
-            ->orderBy('id', 'asc')
-            ->get();
-
-        return view('ventas.tpv', compact('cajaAbierta', 'categorias', 'productos', 'clientes', 'terrenos'));
-    }
-
-    /**
-     * Almacena una nueva venta procesada desde el TPV (Terreno + Financiamiento + Pagos automáticos).
+     * Procesa la venta y genera el calendario de pagos automáticamente.
      */
     public function store(Request $request)
     {
-        // ✅ VALIDACIÓN COMPLETA
         $request->validate([
-            'cliente_id' => 'nullable|exists:clientes,id',
-
-            // NUEVO: Terreno + financiamiento
+            'cliente_id' => 'required|exists:clientes,idCli',
             'terreno_id' => 'required|exists:terrenos,id',
             'fecha_compra' => 'required|date',
             'mensualidades' => 'required|in:12,24,36,48,60',
-            'pago_inicial' => 'required|in:2500,5000',
-            'dia_pago' => 'required|integer|min:15|max:20',
-
-            // TPV existente
-            'metodo_pago' => 'required|string|in:efectivo,tarjeta,transferencia,credito',
-            'total' => 'required|numeric|min:0.01',
-            'monto_recibido' => 'nullable|numeric|min:0',
-            'monto_entregado' => 'nullable|numeric|min:0',
-
-            'detalles' => 'nullable|array',
+            'pago_inicial' => 'required|numeric',
+            'dia_pago' => 'required|integer|min:15|max:20', // Tope de 5 días (15 al 20)
         ]);
 
-        // 2. Caja abierta
-        $cajaAbierta = $this->cajaSistema();
-
-}
-
-        // 3. Terreno disponible (lock para evitar doble venta)
-        $terreno = Terreno::where('id', $request->terreno_id)->lockForUpdate()->first();
-
-        if (!$terreno) {
-            return response()->json(['message' => 'Terreno no encontrado.'], 404);
-        }
-
-        if ($terreno->estado !== 'disponible') {
-            return response()->json(['message' => 'El terreno ya no está disponible.'], 422);
-        }
-
-        // Forzar total = precio del terreno (seguridad)
-        $totalTerreno   = (float) $terreno->precio_total;
-        $pagoInicial    = (float) $request->pago_inicial;
-        $mensualidades  = (int) $request->mensualidades;
-        $diaPago        = (int) $request->dia_pago;
-
-        $montoFinanciado = max(0, $totalTerreno - $pagoInicial);
-        $montoMensual    = $mensualidades > 0 ? round($montoFinanciado / $mensualidades, 2) : 0;
-
-        $fechaCompra     = Carbon::parse($request->fecha_compra);
-        $fechaPrimerPago = $fechaCompra->copy()->addDays(5);
+        $terreno = Terreno::findOrFail($request->terreno_id);
+        
+        // Cálculo de financiamiento
+        $totalTerreno = (float) $terreno->precio_total;
+        $montoFinanciado = $totalTerreno - (float)$request->pago_inicial;
+        $montoMensual = round($montoFinanciado / (int)$request->mensualidades, 2);
 
         DB::beginTransaction();
-
         try {
-            // 4. Crear venta con campos nuevos
+            // 1. Crear la Venta
             $venta = Venta::create([
                 'terreno_id' => $terreno->id,
                 'cliente_id' => $request->cliente_id,
                 'user_id' => Auth::id(),
-
-                'fecha_hora' => now(),
-                'fecha_compra' => $fechaCompra->toDateString(),
-                'mensualidades' => $mensualidades,
-                'pago_inicial' => $pagoInicial,
+                'fecha_compra' => $request->fecha_compra,
+                'mensualidades' => $request->mensualidades,
+                'pago_inicial' => $request->pago_inicial,
                 'monto_mensual' => $montoMensual,
-                'dia_pago' => $diaPago,
-                'fecha_primer_pago' => $fechaPrimerPago->toDateString(),
-                'estado_venta' => 'financiado',
-
-                'metodo_pago' => $request->metodo_pago,
+                'dia_pago' => $request->dia_pago,
                 'total' => $totalTerreno,
-                'monto_recibido' => $request->monto_recibido ?? $totalTerreno,
-                'monto_entregado' => $request->monto_entregado ?? 0,
+                'estado_venta' => 'financiado',
+                'metodo_pago' => $request->metodo_pago ?? 'credito'
             ]);
 
-            // ==========================================================
-            // ✅ NUEVO: GENERAR CALENDARIO DE PAGOS
-            // ==========================================================
-            $pagos = [];
+            // 2. Generar Calendario de Pagos (Regla del día 20)
+            $fechaPago = Carbon::parse($request->fecha_compra)->addMonth();
+            $fechaPago->day = $request->dia_pago; // Establecer el día límite (ej. 20)
 
-            // Base = compra + 5 días
-            $fechaBase = Carbon::parse($venta->fecha_compra)->addDays(5);
-
-            // Pago 1: el día 15-20 del mes que corresponda
-            $fechaPago = $fechaBase->copy();
-            $fechaPago->day = $diaPago;
-
-            if ($fechaPago->lt($fechaBase)) {
-                $fechaPago = $fechaPago->addMonthNoOverflow();
-                $fechaPago->day = $diaPago;
-            }
-
-            for ($i = 1; $i <= (int) $venta->mensualidades; $i++) {
-                $pagos[] = [
+            for ($i = 1; $i <= $venta->mensualidades; $i++) {
+                PagoVenta::create([
                     'venta_id' => $venta->id,
                     'numero_pago' => $i,
                     'fecha_vencimiento' => $fechaPago->toDateString(),
-                    'monto' => $venta->monto_mensual,
+                    'monto' => $montoMensual,
                     'estado' => 'pendiente',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-
-                $fechaPago = $fechaPago->copy()->addMonthNoOverflow();
-                $fechaPago->day = $diaPago;
-            }
-
-            // Inserción masiva
-            DB::table('pago_ventas')->insert($pagos);
-
-            // 5. Detalles + stock
-            if (!empty($request->detalles)) {
-            foreach ($request->detalles as $detalle) {
-                DetalleVenta::create([
-                    'venta_id' => $venta->id,
-                    'producto_id' => $detalle['producto_id'],
-                    'cantidad' => $detalle['cantidad'],
-                    'precio_unitario' => $detalle['precio_unitario'],
-                    'importe' => $detalle['importe'],
                 ]);
-
-                $inventario = Inventario::where('producto_id', $detalle['producto_id'])->first();
-
-                if (!$inventario) {
-                    throw ValidationException::withMessages([
-                        'inventario' => 'Error: No se encontró inventario para el producto ID ' . $detalle['producto_id']
-                    ]);
-                }
-
-                if ($inventario->stock < $detalle['cantidad']) {
-                    throw ValidationException::withMessages([
-                        'stock' => 'Stock insuficiente para el producto ID ' . $detalle['producto_id']
-                    ]);
-                }
-
-                $inventario->decrement('stock', $detalle['cantidad']);
+                $fechaPago->addMonthNoOverflow();
             }
 
-            // 6. Marcar terreno como vendido
-            $terreno->estado = 'vendido';
-            $terreno->save();
-
+            $terreno->update(['estado' => 'vendido']);
             DB::commit();
-
-            return response()->json([
-                'message' => 'Venta registrada exitosamente.',
-                'venta_id' => $venta->id
-            ], 201);
-
-        } catch (ValidationException $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'message' => 'Error de validación.',
-                'errors' => $e->errors()
-            ], 422);
+            return response()->json(['message' => 'Venta y plan de pagos creados', 'venta_id' => $venta->id]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-
-            return response()->json([
-                'message' => 'Error interno al procesar la venta. Verifique los logs.',
-                'error' => $e->getMessage()
-            ], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * Genera un PDF del ticket de venta.
+     * REGISTRAR COBRO: Aplica 10% de multa si es después de la fecha límite.
      */
-    public function generarTicketPDF(Venta $venta)
+    public function registrarCobro(Request $request, $pago_id)
     {
-        $venta->load('user', 'cliente', 'terreno', 'detalles.producto');
-        $pdf = PDF::loadView('ventas.ticket_pdf', compact('venta'));
-        $pdf->setPaper([0, 0, 226.77, 800]);
+        $pago = PagoVenta::findOrFail($pago_id);
+        $hoy = Carbon::now();
+        $recargo = 0.00;
 
-        return $pdf->stream('ticket_venta_' . $venta->id . '.pdf');
+        // Si hoy es mayor a la fecha de vencimiento (pasó del día 20)
+        if ($hoy->gt($pago->fecha_vencimiento)) {
+            $recargo = $pago->monto * 0.10; // Multa del 10%
+        }
+
+        $pago->update([
+            'estado' => 'pagado',
+            'fecha_pago' => $hoy->toDateString(),
+            'recargo_aplicado' => $recargo,
+            'monto_total_cobrado' => $pago->monto + $recargo,
+            'tipo_pago' => 'normal',
+            'referencia' => $request->referencia
+        ]);
+
+        return response()->json(['message' => 'Pago procesado exitosamente', 'total_cobrado' => $pago->monto_total_cobrado]);
     }
 
     /**
-     * Contrato PDF con calendario de pagos.
+     * ADELANTAR CUOTAS: Resta mensualidades desde la última (final del contrato).
      */
-    public function contratoPDF(Venta $venta)
+    public function adelantarDesdeElFinal($venta_id)
     {
-        $venta->load('user', 'cliente', 'terreno', 'pagos');
-        $pdf = PDF::loadView('ventas.contrato_pdf', compact('venta'));
-        $pdf->setPaper('letter');
+        // Buscar la última cuota pendiente (la más lejana en el tiempo)
+        $ultimaCuota = PagoVenta::where('venta_id', $venta_id)
+            ->where('estado', 'pendiente')
+            ->orderBy('numero_pago', 'desc')
+            ->first();
 
-        return $pdf->stream('contrato_venta_' . $venta->id . '.pdf');
-    }
+        if (!$ultimaCuota) {
+            return response()->json(['message' => 'No hay cuotas pendientes para adelantar'], 400);
+        }
 
-    /**
-     * Vista envoltorio para imprimir PDF.
-     */
-    public function imprimirTicket(Venta $venta)
-    {
-        $urlPdf = route('ventas.ticket', $venta);
-        return view('ventas.imprimir_pdf', compact('urlPdf'));
+        $ultimaCuota->update([
+            'estado' => 'pagado',
+            'fecha_pago' => Carbon::now()->toDateString(),
+            'monto_total_cobrado' => $ultimaCuota->monto, // Sin multa por ser adelanto
+            'tipo_pago' => 'adelanto_final',
+            'observaciones' => 'Mensualidad adelantada (Restada del final del contrato)'
+        ]);
+
+        return response()->json(['message' => "Se ha liquidado la cuota #{$ultimaCuota->numero_pago} (Adelanto)"]);
     }
 }
-

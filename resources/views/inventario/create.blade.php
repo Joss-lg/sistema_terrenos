@@ -4,48 +4,44 @@
 
 <style>
 /* Quitar flechas en input number */
-/* Chrome, Edge, Safari */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
-
-/* Firefox */
 input[type=number] {
     -moz-appearance: textfield;
 }
 </style>
 
-<div class="container py-4">
+<div class="container py-4" style="background:#ffffff; min-height:100vh;">
 
-    {{-- ENCABEZADO --}}
+    {{-- ENCABEZADO: Azul sólido institucional --}}
     <div class="d-flex justify-content-between align-items-center mb-4 p-4"
          style="
-            background:linear-gradient(135deg,#0b1220,#0a1b3a);
-            border-radius:18px;
-            box-shadow:0 18px 45px rgba(0,0,0,.20);
+            background: #0d2c4b;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
          ">
         <div>
             <div class="text-uppercase"
-                 style="letter-spacing:.18em;font-size:.75rem;color:#93c5fd;">
+                 style="letter-spacing:.18em; font-size:.75rem; color:rgba(255,255,255,0.7);">
                 Inmobiliaria • Inventario
             </div>
             <h3 class="fw-bold mb-0" style="color:#ffffff;">
                 Agregar Terreno
             </h3>
             <div style="color:rgba(255,255,255,.70); font-size:.95rem;" class="mt-1">
-                Captura la información del terreno y asígnalo a un cliente.
+        
             </div>
         </div>
 
         <a href="{{ route('inventario.index') }}"
-           class="btn"
+           class="btn btn-outline-light"
            style="
-                border:1px solid rgba(255,255,255,.35);
-                color:#ffffff;
                 border-radius:14px;
                 padding:.55rem .9rem;
+                border-color: rgba(255,255,255,0.3);
            ">
             ← Volver
         </a>
@@ -68,8 +64,9 @@ input[type=number] {
     <div class="card border-0"
          style="
             border-radius:18px;
-            box-shadow:0 18px 40px rgba(2,15,38,.10);
-            overflow:hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
          ">
 
         <div class="card-body p-4 p-md-5">
@@ -79,91 +76,86 @@ input[type=number] {
 
                 <div class="row g-4">
 
-                    {{-- CLIENTE --}}
+                    {{-- CATEGORIA --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Cliente</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
-                                👤
+                        <label class="form-label fw-bold" style="color:#0d2c4b;">Categoría</label>
+                        <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
+                            <span class="input-group-text border-0"
+                                  style="background:#f1f5f9; color:#0d2c4b;">
+                                🏷️
                             </span>
-                            <select name="cliente" class="form-select"
-                                    style="border-radius:0 14px 14px 0;" required>
+                            <select name="categoria" class="form-select border-0 p-3"
+                                    style="background:#f1f5f9; color:#000000;" required>
                                 <option value="">-- Selecciona --</option>
-                                @foreach($clientes as $c)
-                                    <option value="{{ $c->id }}" {{ old('cliente') == $c->id ? 'selected' : '' }}>
-                                        {{ $c->cliente }}
-                                    </option>
-                                @endforeach
+                                <option value="Basico" {{ old('categoria') == 'Basico' ? 'selected' : '' }}>Basico</option>
+                                <option value="Medio" {{ old('categoria') == 'Medio' ? 'selected' : '' }}>Medio</option>
+                                <option value="Premium" {{ old('categoria') == 'Premium' ? 'selected' : '' }}>Premium</option>
                             </select>
                         </div>
                     </div>
 
                     {{-- ESTADO --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Estado</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
+                        <label class="form-label fw-bold" style="color:#0d2c4b;">Estado</label>
+                        <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
+                            <span class="input-group-text border-0"
+                                  style="background:#f1f5f9; color:#0d2c4b;">
                                 ✅
                             </span>
-                            <select name="estado" class="form-select"
-                                    style="border-radius:0 14px 14px 0;" required>
-                                @foreach(['disponible','apartado','vendido'] as $st)
-                                    <option value="{{ $st }}" {{ old('estado','disponible') === $st ? 'selected' : '' }}>
-                                        {{ strtoupper($st) }}
-                                    </option>
-                                @endforeach
+                            <select name="estado" class="form-select border-0 p-3"
+                                    style="background:#f1f5f9; color:#000000;" required>
+                                <option value="disponible" {{ old('estado') == 'disponible' ? 'selected' : '' }}>DISPONIBLE</option>
+                                <option value="agotado" {{ old('estado') == 'agotado' ? 'selected' : '' }}>AGOTADO</option>
                             </select>
                         </div>
                     </div>
 
-                    {{-- ALCALDIA --}}
+                    {{-- COLONIA --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Alcaldía</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
+                        <label class="form-label fw-bold" style="color:#0d2c4b;">Colonia</label>
+                        <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
+                            <span class="input-group-text border-0"
+                                  style="background:#f1f5f9; color:#0d2c4b;">
                                 📍
                             </span>
-                            <input type="text" class="form-control"
-                                   name="alcaldia"
-                                   value="{{ old('alcaldia') }}"
-                                   style="border-radius:0 14px 14px 0;"
-                                   placeholder="Ej. Iztapalapa">
+                            <input type="text" class="form-control border-0 p-3"
+                                   name="colonia"
+                                   value="{{ old('colonia') }}"
+                                   style="background:#f1f5f9; color:#000000;"
+                                   placeholder="Ej. Santa María">
                         </div>
                     </div>
 
                     {{-- UBICACION --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Ubicación</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
+                        <label class="form-label fw-bold" style="color:#0d2c4b;">Ubicación </label>
+                        <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
+                            <span class="input-group-text border-0"
+                                  style="background:#f1f5f9; color:#0d2c4b;">
                                 🧭
                             </span>
-                            <input type="text" class="form-control"
+                            <input type="text" class="form-control border-0 p-3"
                                    name="ubicacion"
                                    value="{{ old('ubicacion') }}"
-                                   style="border-radius:0 14px 14px 0;"
+                                   style="background:#f1f5f9; color:#000000;"
                                    placeholder="Ej. Av. López 123">
                         </div>
                     </div>
 
                     {{-- PRECIO --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Precio</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
+                        <label class="form-label fw-bold" style="color:#0d2c4b;">Precio</label>
+                        <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
+                            <span class="input-group-text border-0"
+                                  style="background:#f1f5f9; color:#0d2c4b;">
                                 $
                             </span>
                             <input type="number"
                                    step="0.01"
-                                   class="form-control"
+                                   class="form-control border-0 p-3"
                                    name="precio_total"
                                    value="{{ old('precio_total', 0) }}"
-                                   style="border-radius:0 14px 14px 0;"
+                                   style="background:#f1f5f9; color:#000000;"
                                    required>
                         </div>
                     </div>
@@ -171,12 +163,11 @@ input[type=number] {
                     {{-- RESUMEN --}}
                     <div class="col-12 col-md-6">
                         @php
-                            $estadoPrev = strtoupper(old('estado','disponible'));
+                            $estadoPrev = strtoupper(old('estado','Disponible'));
                             $badge = match($estadoPrev) {
                                 'DISPONIBLE' => 'background:#dcfce7;color:#166534;border:1px solid #86efac;',
-                                'APARTADO'   => 'background:#fffbeb;color:#92400e;border:1px solid #fcd34d;',
-                                'VENDIDO'    => 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;',
-                                default      => 'background:#e5e7eb;color:#111827;border:1px solid #cbd5e1;',
+                                'AGOTADO'    => 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;',
+                                default      => 'background:#f1f5f9;color:#0d2c4b;border:1px solid #e2e8f0;',
                             };
                         @endphp
 
@@ -188,29 +179,24 @@ input[type=number] {
                             </div>
                         </div>
                     </div>
-
+                </div>
 
                 {{-- BOTONES --}}
-                <div class="d-flex gap-2 justify-content-end mt-4">
+                <div class="d-flex gap-3 justify-content-end mt-5 pt-3 border-top">
                     <a href="{{ route('inventario.index') }}"
-                       class="btn"
-                       style="
-                            border-radius:14px;
-                            border:1px solid #cbd5e1;
-                            background:#ffffff;
-                       ">
+                       class="btn btn-light border px-4"
+                       style="border-radius:12px; font-weight:600;">
                         Cancelar
                     </a>
 
-                    <button class="btn"
+                    <button class="btn text-white px-4"
                             style="
-                                border-radius:14px;
-                                background:#0f172a;
-                                color:#fff;
-                                padding:.55rem 1.1rem;
-                                box-shadow:0 12px 24px rgba(15,23,42,.22);
+                                border-radius:12px;
+                                background:#0d2c4b;
+                                font-weight:700;
+                                box-shadow: 0 4px 12px rgba(13,44,75,0.2);
                             ">
-                        Guardar
+                        Guardar Terreno
                     </button>
                 </div>
 

@@ -92,7 +92,7 @@
         <li class="nav-item">
             {{-- CAMBIO: Corregido el 'active' y 'href' para usar rutas de Laravel --}}
             <a class="nav-link text-white {{ request()->routeIs('compras.*') ? 'active' : '' }}" href="{{ route('compras.index') }}">
-                <i class="fas fa-shopping-basket me-2"></i> Compras
+                <i class="fas fa-book me-2"></i> Historial
             </a>
         </li>
     @endif
@@ -103,7 +103,7 @@
         <li class="nav-item">
             {{-- CAMBIO: Corregido el 'active' para incluir sub-rutas --}}
             <a class="nav-link text-white {{ request()->routeIs('ventas.tpv') ? 'active' : '' }}" href="{{ route('ventas.tpv') }}">
-                <i class="fas fa-cash-register me-2"></i> Ventas (POS)
+                <i class="fas fa-cash-register me-2"></i> Ventas 
             </a>
         </li>
     @endif
@@ -140,14 +140,7 @@
         </li>
     @endif
 
-    @if (Auth::user()->hasPermissionTo('productos', 'mostrar'))
-        <li class="nav-item">
-            {{-- CAMBIO: Corregido el 'active' para incluir sub-rutas --}}
-            <a class="nav-link text-white {{ request()->routeIs('productos.*') ? 'active' : '' }}" href="{{ route('productos.index') }}">
-                <i class="fas fa-boxes me-2"></i> Casas
-            </a>
-        </li>
-    @endif
+ 
 
 </ul>
 

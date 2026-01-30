@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Cliente;
 use App\Models\Inventario;
 use Illuminate\Http\Request;
 
@@ -10,95 +9,83 @@ class InventarioController extends Controller
 {
     public function index(Request $request)
     {
-        $clientes = Cliente::orderBy('cliente', 'asc')->get();
-
-        // ✅ (Opcional recomendado) Si ya agregaste la relación clienteRel en el modelo:
-        // $inventarios = Inventario::with('clienteRel')->orderBy('id', 'desc')->get();
-
-        // ✅ Si aún no agregas relación, deja así:
         $inventarios = Inventario::orderBy('id', 'desc')->get();
-
-        return view('inventario.index', compact('clientes', 'inventarios'));
+        return view('inventario.index', compact('inventarios'));
     }
 
-    // ✅ MUESTRA FORM CREATE
     public function create()
     {
-        $clientes = Cliente::orderBy('cliente', 'asc')->get();
-
-        return view('inventario.create', compact('clientes'));
+        return view('inventario.create');
     }
 
-    // ✅ GUARDA NUEVO TERRENO
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'cliente'      => ['required', 'integer'], // mejor: exists:clientes,id
-            'alcaldia'     => ['nullable', 'string', 'max:255'],
+        // 1. Validación: Aseguramos que los nombres coincidan con el formulario
+        $request->validate([
+            'categoria'    => ['required', 'in:Basico,Medio,Premium'], 
+            'colonia'      => ['nullable', 'string', 'max:150'],
             'ubicacion'    => ['nullable', 'string', 'max:255'],
-
-            // ✅ CAMBIO: tu columna real es precio_total
             'precio_total' => ['required', 'numeric', 'min:0'],
-
-            'estado'       => ['required', 'in:disponible,apartado,vendido'],
+            'estado'       => ['required', 'in:disponible,agotado'],
             'descripcion'  => ['nullable', 'string'],
         ]);
 
-        Inventario::create($data);
+        // 2. Creación del registro
+        $terreno = new Inventario();
+        
+        // Asignación de campos que SÍ existen en tu base de datos
+        $terreno->categoria    = $request->categoria;
+        $terreno->colonia      = $request->colonia; 
+        $terreno->ubicacion    = $request->ubicacion;
+        $terreno->precio_total = $request->precio_total;
+        $terreno->estado       = $request->estado;
+        $terreno->descripcion  = $request->descripcion;
+        
+        
 
-        return redirect()->route('inventario.index')->with('success', 'Terreno agregado correctamente.');
+        $terreno->save();
+
+        return redirect()->route('inventario.index')->with('success', 'Producto agregado correctamente.');
     }
 
-    // ✅ FORM EDIT
     public function edit($id)
     {
-        $clientes = Cliente::orderBy('cliente', 'asc')->get();
-        $terreno  = Inventario::findOrFail($id);
-
-        return view('inventario.edit', compact('terreno', 'clientes'));
+        $terreno = Inventario::findOrFail($id);
+        return view('inventario.edit', compact('terreno'));
     }
 
-    // ✅ ACTUALIZA TERRENO
     public function update(Request $request, $id)
     {
-        $data = $request->validate([
-            'cliente'      => ['required', 'integer'],
-            'alcaldia'     => ['nullable', 'string', 'max:255'],
+        $request->validate([
+            'categoria'    => ['required', 'in:Basico,Medio,Premium'],
+            'colonia'      => ['nullable', 'string', 'max:150'],
             'ubicacion'    => ['nullable', 'string', 'max:255'],
-
-            // ✅ CAMBIO: tu columna real es precio_total
             'precio_total' => ['required', 'numeric', 'min:0'],
-
-            'estado'       => ['required', 'in:disponible,apartado,vendido'],
+            'estado'       => ['required', 'in:disponible,agotado'],
             'descripcion'  => ['nullable', 'string'],
         ]);
 
         $terreno = Inventario::findOrFail($id);
-        $terreno->update($data);
+        
+        $terreno->categoria    = $request->categoria;
+        $terreno->colonia      = $request->colonia; 
+        $terreno->ubicacion    = $request->ubicacion;
+        $terreno->precio_total = $request->precio_total;
+        $terreno->estado       = $request->estado;
+        $terreno->descripcion  = $request->descripcion;
+        
+        // Asegúrate de que aquí tampoco se llame a $terreno->cliente ni $terreno->nombre
 
-        return redirect()->route('inventario.index')->with('success', 'Terreno actualizado correctamente.');
+        $terreno->save();
+
+        return redirect()->route('inventario.index')->with('success', 'Inventario actualizado correctamente.');
     }
 
-    // ✅ ELIMINAR TERRENO
     public function destroy($id)
     {
         $terreno = Inventario::findOrFail($id);
         $terreno->delete();
 
-        return back()->with('success', 'Terreno eliminado correctamente.');
-    }
-
-    // ✅ ASIGNAR CLIENTE DESDE TARJETA
-    public function asignarCliente(Request $request, $id)
-    {
-        $data = $request->validate([
-            'cliente' => ['required', 'integer'],
-        ]);
-
-        $terreno = Inventario::findOrFail($id);
-        $terreno->cliente = $data['cliente'];
-        $terreno->save();
-
-        return back()->with('success', 'Cliente asignado correctamente.');
+        return back()->with('success', 'Registro eliminado correctamente.');
     }
 }

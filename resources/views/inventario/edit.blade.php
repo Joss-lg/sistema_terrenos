@@ -4,48 +4,44 @@
 
 <style>
 /* Quitar flechas en input number */
-/* Chrome, Edge, Safari */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
-
-/* Firefox */
 input[type=number] {
     -moz-appearance: textfield;
 }
 </style>
 
-<div class="container py-4">
+<div class="container py-4" style="background:#ffffff; min-height:100vh;">
 
-    {{-- ENCABEZADO --}}
+    {{-- ENCABEZADO: Azul sólido institucional --}}
     <div class="d-flex justify-content-between align-items-center mb-4 p-4"
          style="
-            background:linear-gradient(135deg,#0b1220,#0a1b3a);
-            border-radius:18px;
-            box-shadow:0 18px 45px rgba(0,0,0,.25);
+            background: #0d2c4b;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
          ">
         <div>
             <div class="text-uppercase"
-                 style="letter-spacing:.18em;font-size:.75rem;color:#93c5fd;">
+                 style="letter-spacing:.18em; font-size:.75rem; color:rgba(255,255,255,0.7);">
                 Inmobiliaria • Inventario
             </div>
             <h3 class="fw-bold mb-0" style="color:#ffffff;">
                 Editar Terreno #{{ $terreno->id }}
             </h3>
             <div style="color:rgba(255,255,255,.70); font-size:.95rem;" class="mt-1">
-                Actualiza cliente, ubicación, precio y estado del terreno.
+                
             </div>
         </div>
 
         <a href="{{ route('inventario.index') }}"
-           class="btn"
+           class="btn btn-outline-light"
            style="
-                border:1px solid rgba(255,255,255,.35);
-                color:#ffffff;
                 border-radius:14px;
                 padding:.55rem .9rem;
+                border-color: rgba(255,255,255,0.3);
            ">
             ← Volver
         </a>
@@ -54,7 +50,7 @@ input[type=number] {
     {{-- ERRORES --}}
     @if($errors->any())
         <div class="alert alert-danger"
-             style="border-radius:14px; border:1px solid rgba(239,68,68,.25);">
+             style="border-radius:14px; border:1px solid rgba(239,68,68,.25); background:#fee2e2; color:#991b1b;">
             <div class="fw-bold mb-2">Corrige lo siguiente:</div>
             <ul class="mb-0">
                 @foreach($errors->all() as $e)
@@ -64,12 +60,13 @@ input[type=number] {
         </div>
     @endif
 
-    {{-- CARD FORM --}}
+    {{-- CARD FORM: Fondo blanco con campos grises --}}
     <div class="card border-0"
          style="
             border-radius:18px;
-            box-shadow:0 18px 40px rgba(2,15,38,.12);
-            overflow:hidden;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
          ">
 
         <div class="card-body p-4 p-md-5">
@@ -80,147 +77,134 @@ input[type=number] {
 
                 <div class="row g-4">
 
-                    {{-- CLIENTE --}}
+                    {{-- CATEGORÍA --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Cliente</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
-                                👤
+                        <label class="form-label fw-bold" style="color:#0d2c4b;">Categoría</label>
+                        <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
+                            <span class="input-group-text border-0"
+                                  style="background:#f1f5f9; color:#0d2c4b;">
+                                🏷️
                             </span>
-                            <select name="cliente" class="form-select"
-                                    style="border-radius:0 14px 14px 0;"
-                                    required>
+                            <select name="categoria" class="form-select border-0 p-3"
+                                    style="background:#f1f5f9; color:#000000;" required>
                                 <option value="">-- Selecciona --</option>
-                                @foreach($clientes as $c)
-                                    <option value="{{ $c->id }}"
-                                        {{ (string)old('cliente', $terreno->cliente) === (string)$c->id ? 'selected' : '' }}>
-                                        {{ $c->cliente }}
+                                @foreach(['Basico', 'Medio', 'Premium'] as $cat)
+                                    <option value="{{ $cat }}" 
+                                        {{ old('categoria', $terreno->categoria) == $cat ? 'selected' : '' }}>
+                                        {{ $cat }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
-                        <small class="text-muted">Selecciona quién está asignado al terreno.</small>
                     </div>
 
                     {{-- ESTADO --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Estado</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
+                        <label class="form-label fw-bold" style="color:#0d2c4b;">Estado</label>
+                        <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
+                            <span class="input-group-text border-0"
+                                  style="background:#f1f5f9; color:#0d2c4b;">
                                 ✅
                             </span>
-                            <select name="estado" class="form-select"
-                                    style="border-radius:0 14px 14px 0;"
-                                    required>
-                                @foreach(['disponible','apartado','vendido'] as $st)
-                                    <option value="{{ $st }}"
-                                        {{ old('estado', $terreno->estado) === $st ? 'selected' : '' }}>
-                                        {{ strtoupper($st) }}
-                                    </option>
-                                @endforeach
+                            <select name="estado" class="form-select border-0 p-3"
+                                    style="background:#f1f5f9; color:#000000;" required>
+                                <option value="disponible" {{ old('estado', $terreno->estado) == 'disponible' ? 'selected' : '' }}>DISPONIBLE</option>
+                                <option value="agotado" {{ old('estado', $terreno->estado) == 'agotado' ? 'selected' : '' }}>AGOTADO</option>
                             </select>
                         </div>
-                        <small class="text-muted">Define el estatus actual del terreno.</small>
                     </div>
 
-                    {{-- ALCALDIA --}}
+                    {{-- COLONIA --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Alcaldía</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
+                        <label class="form-label fw-bold" style="color:#0d2c4b;">Colonia</label>
+                        <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
+                            <span class="input-group-text border-0"
+                                  style="background:#f1f5f9; color:#0d2c4b;">
                                 📍
                             </span>
                             <input type="text"
-                                   class="form-control"
-                                   name="alcaldia"
-                                   value="{{ old('alcaldia', $terreno->alcaldia) }}"
-                                   style="border-radius:0 14px 14px 0;"
-                                   placeholder="Ej. Iztapalapa">
+                                   class="form-control border-0 p-3"
+                                   name="colonia"
+                                   value="{{ old('colonia', $terreno->colonia) }}"
+                                   style="background:#f1f5f9; color:#000000;"
+                                   placeholder="Ej. Santa María">
                         </div>
                     </div>
 
                     {{-- UBICACION --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Ubicación</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
+                        <label class="form-label fw-bold" style="color:#0d2c4b;">Ubicación</label>
+                        <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
+                            <span class="input-group-text border-0"
+                                  style="background:#f1f5f9; color:#0d2c4b;">
                                 🧭
                             </span>
                             <input type="text"
-                                   class="form-control"
+                                   class="form-control border-0 p-3"
                                    name="ubicacion"
                                    value="{{ old('ubicacion', $terreno->ubicacion) }}"
-                                   style="border-radius:0 14px 14px 0;"
+                                   style="background:#f1f5f9; color:#000000;"
                                    placeholder="Ej. Av. López 123">
                         </div>
                     </div>
 
                     {{-- PRECIO --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Precio</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
+                        <label class="form-label fw-bold" style="color:#0d2c4b;">Precio</label>
+                        <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
+                            <span class="input-group-text border-0"
+                                  style="background:#f1f5f9; color:#0d2c4b;">
                                 $
                             </span>
                             <input type="number"
                                    step="0.01"
-                                   class="form-control"
+                                   class="form-control border-0 p-3"
                                    name="precio_total"
                                    value="{{ old('precio_total', $terreno->precio_total) }}"
-                                   style="border-radius:0 14px 14px 0;"
+                                   style="background:#f1f5f9; color:#000000;"
                                    required>
                         </div>
                     </div>
 
-                    {{-- RESUMEN (badge visual) --}}
+                    {{-- RESUMEN --}}
                     <div class="col-12 col-md-6">
                         @php
-                            $estado = strtoupper(old('estado', $terreno->estado ?? 'DISPONIBLE'));
+                            $estado = strtoupper(old('estado', $terreno->estado ?? 'Disponible'));
                             $badge = match($estado) {
                                 'DISPONIBLE' => 'background:#dcfce7;color:#166534;border:1px solid #86efac;',
-                                'APARTADO'   => 'background:#fffbeb;color:#92400e;border:1px solid #fcd34d;',
-                                'VENDIDO'    => 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;',
-                                default      => 'background:#e5e7eb;color:#111827;border:1px solid #cbd5e1;',
+                                'AGOTADO'    => 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;',
+                                default      => 'background:#f1f5f9;color:#0d2c4b;border:1px solid #e2e8f0;',
                             };
                         @endphp
 
-                        <div class="p-3"
-                             style="border-radius:14px; {{ $badge }}">
-                            <div class="fw-bold">Resumen</div>
+                        <div class="p-3" style="border-radius:14px; {{ $badge }}">
+                            <div class="fw-bold">Vista Previa Actual</div>
                             <div style="font-size:.95rem;">
-                                Cliente: <b>{{ $terreno->clienteRel?->cliente ?? 'Sin asignar' }}</b><br>
+                                Categoría: <b>{{ old('categoria', $terreno->categoria) }}</b><br>
                                 Estado: <b>{{ $estado }}</b><br>
                                 Precio: <b>${{ number_format(old('precio_total', $terreno->precio_total) ?? 0, 2) }}</b>
                             </div>
                         </div>
                     </div>
+                </div>
 
                 {{-- BOTONES --}}
-                <div class="d-flex gap-2 justify-content-end mt-4">
+                <div class="d-flex gap-3 justify-content-end mt-5 pt-3 border-top">
                     <a href="{{ route('inventario.index') }}"
-                       class="btn"
-                       style="
-                            border-radius:14px;
-                            border:1px solid #cbd5e1;
-                            background:#ffffff;
-                       ">
+                       class="btn btn-light border px-4"
+                       style="border-radius:12px; font-weight:600;">
                         Cancelar
                     </a>
 
-                    <button class="btn"
+                    <button type="submit"
+                            class="btn text-white px-4"
                             style="
-                                border-radius:14px;
-                                background:#0f172a;
-                                color:#fff;
-                                padding:.55rem 1.1rem;
-                                box-shadow:0 12px 24px rgba(15,23,42,.25);
+                                border-radius:12px;
+                                background:#0d2c4b;
+                                font-weight:700;
+                                box-shadow: 0 4px 12px rgba(13,44,75,0.2);
                             ">
-                        Guardar cambios
+                        💾 Guardar cambios
                     </button>
                 </div>
 

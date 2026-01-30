@@ -6,21 +6,22 @@
     {{-- Encabezado --}}
     <div class="d-flex justify-content-between align-items-center mb-4 p-4"
          style="
-            background:linear-gradient(135deg,#0a2540,#0f3d63);
-            border-radius:18px;
-            border:1px solid rgba(255,255,255,.10);
-            box-shadow:0 20px 40px rgba(0,0,0,.6);
+            background: #0d2c4b;
+            border-radius: 18px;
+            border: 1px solid rgba(255,255,255,.10);
+            box-shadow: 0 20px 40px rgba(0,0,0,.15);
          ">
         <div>
             <div class="text-uppercase"
-                 style="letter-spacing:.18em;font-size:.75rem;color:#93c5fd;">
+                 style="letter-spacing:.18em; font-size:.75rem; color: rgba(255,255,255,0.7);">
                 Inmobiliaria • Clientes
             </div>
-            <h3 class="fw-bold mb-0" style="color:#e6edf7;">
+            <h3 class="fw-bold mb-0" style="color:#ffffff;">
                 Módulo de Clientes
             </h3>
         </div>
 
+        {{-- TU BOTÓN ORIGINAL (Sin mover nada de su lógica) --}}
         @if(Auth::user()->hasPermissionTo('clientes', 'alta'))
             <a href="{{ route('clientes.create') }}"
                class="btn"
@@ -42,10 +43,10 @@
             <div class="card h-100 border-0"
                  style="
                     border-radius:22px;
-                    background:#07101e;
-                    color:#e6edf7;
-                    border:1px solid rgba(255,255,255,.10);
-                    box-shadow:0 15px 35px rgba(0,0,0,.65);
+                    background:#ffffff;
+                    color:#000000; {{-- Letras en negro --}}
+                    border:1px solid #e2e8f0;
+                    box-shadow:0 10px 25px rgba(0,0,0,.08);
                     transition:.25s;
                  "
                  onmouseover="this.style.transform='translateY(-6px)'"
@@ -53,51 +54,54 @@
             >
                 <div class="card-body p-4">
 
-                    {{-- Nombre --}}
-                    <h5 class="fw-bold mb-3" style="color:#38bdf8;">
+                    {{-- Nombre en Negro y Minúsculas --}}
+                    <h5 class="fw-bold mb-3" style="color:#000000; text-transform: lowercase;">
                         {{ $cliente->cliente ?? 'Sin nombre' }}
                     </h5>
 
-                    <div style="font-size:.95rem;">
-                        <p class="mb-1"><strong style="color:#93c5fd;">ID:</strong> {{ $cliente->id ?? '—' }}</p>
-                        <p class="mb-1"><strong style="color:#93c5fd;">Correo:</strong> {{ $cliente->correo ?? '—' }}</p>
-                        <p class="mb-1"><strong style="color:#93c5fd;">Teléfono:</strong> {{ $cliente->telefono ?? '—' }}</p>
-                        <p class="mb-1"><strong style="color:#93c5fd;">Identificación:</strong> {{ $cliente->identificacion ?? '—' }}</p>
-                        <p class="mb-1"><strong style="color:#93c5fd;">Dirección:</strong> {{ $cliente->direccion ?? '—' }}</p>
-                        <p class="mb-0" style="color:#64748b;">
+                    <div style="font-size:.95rem; color: #000000;">
+                        <p class="mb-1"><strong>ID:</strong> {{ $cliente->id ?? '—' }}</p>
+                        <p class="mb-1"><strong>Correo:</strong> {{ $cliente->correo ?? '—' }}</p>
+                        <p class="mb-1"><strong>Teléfono:</strong> {{ $cliente->telefono ?? '—' }}</p>
+                        <p class="mb-1"><strong>Identificación:</strong> {{ $cliente->identificacion ?? '—' }}</p>
+                        <p class="mb-1"><strong>Dirección:</strong> {{ $cliente->direccion ?? '—' }}</p>
+                        <p class="mb-0" style="color:#000000;">
                             <strong>Fecha:</strong> {{ $cliente->fecha_compra ?? '—' }}
                         </p>
                     </div>
 
-                    <hr style="border-color:rgba(255,255,255,.12);margin:1.2rem 0;">
+                    <hr style="border-color:#e2e8f0; margin:1.2rem 0;">
 
-                    {{-- Acciones --}}
-                    <div class="d-flex justify-content-between">
+                    {{-- Acciones (Botones con el nuevo diseño) --}}
+                    <div class="d-flex justify-content-between gap-2">
                         @if(Auth::user()->hasPermissionTo('clientes', 'editar'))
                         <a href="{{ route('clientes.edit', ['cliente' => $cliente->id]) }}"
-                           class="btn btn-sm"
+                           class="btn flex-grow-1"
                            style="
-                                background:#0a2540;
-                                color:#e6edf7;
-                                border-radius:10px;
+                                background:#0d1b2a;
+                                color:#ffffff;
+                                border-radius:15px;
+                                font-weight: bold;
                            ">
-                            ✏️ Editar
+                            Editar
                         </a>
                         @endif
 
                         @if(Auth::user()->hasPermissionTo('clientes', 'eliminar'))
-                        <form action="{{ route('clientes.destroy', ['cliente' => $cliente->id]) }}" method="POST">
+                        <form action="{{ route('clientes.destroy', ['cliente' => $cliente->id]) }}" method="POST" class="flex-grow-1">
                             @csrf
                             @method('DELETE')
                             <button
-                                class="btn btn-sm"
+                                type="submit"
+                                class="btn w-100"
                                 style="
-                                    background:#991b1b;
+                                    background:#ef4444;
                                     color:#ffffff;
-                                    border-radius:10px;
+                                    border-radius:15px;
+                                    font-weight: bold;
                                 "
                                 onclick="return confirm('¿Eliminar cliente?')">
-                                🗑️ Eliminar
+                                Eliminar
                             </button>
                         </form>
                         @endif
@@ -108,13 +112,11 @@
         </div>
         @empty
             <div class="col-12">
-                <div class="alert"
-                     style="background:#07101e;color:#93c5fd;border:1px solid rgba(255,255,255,.10);">
+                <div class="alert" style="background:#f8fafc; color:#000000; border:1px solid #e2e8f0;">
                     No hay clientes registrados.
                 </div>
             </div>
         @endforelse
     </div>
-
 </div>
 @endsection

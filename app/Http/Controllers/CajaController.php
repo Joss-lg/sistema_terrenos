@@ -19,7 +19,7 @@ class CajaController extends Controller
      */
     public function index()
     {
-        // Clientes para selector
+        // Clientes para selector 
         $clientes = Cliente::orderBy('cliente', 'asc')->get();
 
 

@@ -10,9 +10,9 @@
     @endif
 
     @php
+        // Normalización de estados simplificada
         $estadoNorm = function($estado) {
             $estado = strtoupper(trim($estado ?? 'DISPONIBLE'));
-            if ($estado === 'RESERVADO') $estado = 'APARTADO';
             return $estado;
         };
 
@@ -20,8 +20,7 @@
             $estado = $estadoNorm($estado);
             return match($estado) {
                 'DISPONIBLE' => ['bg' => '#16a34a', 'text' => '#ffffff', 'label' => 'DISPONIBLE'],
-                'APARTADO'   => ['bg' => '#f59e0b', 'text' => '#111827', 'label' => 'APARTADO'],
-                'VENDIDO'    => ['bg' => '#ef4444', 'text' => '#ffffff', 'label' => 'VENDIDO'],
+                'AGOTADO'    => ['bg' => '#ef4444', 'text' => '#ffffff', 'label' => 'AGOTADO'],
                 default      => ['bg' => '#6b7280', 'text' => '#ffffff', 'label' => $estado],
             };
         };
@@ -30,8 +29,7 @@
             $estado = $estadoNorm($estado);
             return match($estado) {
                 'DISPONIBLE' => '#16a34a',
-                'APARTADO'   => '#f59e0b',
-                'VENDIDO'    => '#ef4444',
+                'AGOTADO'    => '#ef4444',
                 default      => '#6b7280',
             };
         };
@@ -76,7 +74,8 @@
                 $estado = $estadoNorm($inv->estado ?? 'DISPONIBLE');
                 $b = $badge($estado);
                 $a = $accent($estado);
-                $nombreCliente = $inv->clienteRel?->cliente ?? 'Sin asignar';
+                // Ahora usamos la categoría como título principal
+                $categoria = $inv->categoria ?? 'Sin Categoría';
             @endphp
 
             <div class="col-12 col-md-6 col-lg-4 col-xl-3">
@@ -102,8 +101,9 @@
                             <div>
                                 <div class="fw-bold text-uppercase"
                                      style="font-size:1.02rem;letter-spacing:.06em;color:#0f172a;">
-                                    {{ $nombreCliente }}
+                                    {{ $categoria }}
                                 </div>
+                               
                             </div>
 
                             <span class="px-3 py-1"
@@ -123,8 +123,8 @@
 
                         <div class="d-flex flex-column gap-2">
                             <div>
-                                <span class="fw-semibold" style="color:#334155;">Alcaldía:</span>
-                                <span style="color:#0f172a;">{{ $inv->alcaldia }}</span>
+                                <span class="fw-semibold" style="color:#334155;">Colonia:</span>
+                                <span style="color:#0f172a;">{{ $inv->colonia }}</span>
                             </div>
 
                             <div>

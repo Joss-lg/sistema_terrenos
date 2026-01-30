@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('content')
+@section('content') 
 <div class="container">
     {{-- Card centrado --}}
     <div class="card shadow-sm border-0 mx-auto" style="max-width: 600px;">

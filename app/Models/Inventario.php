@@ -4,26 +4,23 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Cliente;
 
 class Inventario extends Model
 {
     use HasFactory;
 
+    // Nombre de la tabla en tu base de datos
     protected $table = 'terrenos';
 
+    // Campos habilitados para asignación masiva
     protected $fillable = [
-        'cliente',
-        'alcaldia',
+        'categoria',    
+        'colonia',      // Cambiado de 'alcaldia' a 'colonia' para coincidir con la DB
         'ubicacion',
         'precio_total',
         'estado',
         'descripcion',
+        
     ];
 
-    // ✅ para mostrar el nombre del cliente
-    public function clienteRel()
-    {
-        return $this->belongsTo(Cliente::class, 'cliente');
-    }
 }

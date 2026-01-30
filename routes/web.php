@@ -176,25 +176,29 @@ Route::post('cajas/cobro', [CajaController::class, 'registrarCobro'])
 
 
 
-    // ==========================================================
-    // MÓDULO: PUNTO DE VENTA (TPV)
-    // ==========================================================
+// ==========================================================
+// MÓDULO: PUNTO DE VENTA (TPV)
+// ==========================================================
 
-    Route::get('tpv', [VentaController::class, 'tpv'])
-        ->name('ventas.tpv')
-        ->middleware('permiso:ventas,mostrar');
+// Carga la pantalla principal (Llama al método tpv)
+Route::get('tpv', [VentaController::class, 'tpv'])
+    ->name('ventas.tpv')
+    ->middleware('permiso:ventas,mostrar');
 
-    Route::post('ventas', [VentaController::class, 'store'])
-        ->name('ventas.store')
-        ->middleware('permiso:ventas,alta');
+// Procesa el pago (Llama al método store)
+// ✅ Cambiado a /ventas/store para coincidir con el controlador y JS
+Route::post('ventas/store', [VentaController::class, 'store'])
+    ->name('ventas.store')
+    ->middleware('permiso:ventas,alta');
 
-    Route::get('ventas/ticket/{venta}', [VentaController::class, 'generarTicketPDF'])
-        ->name('ventas.ticket')
-        ->middleware('permiso:ventas,mostrar');
+// Tickets y Contratos
+Route::get('ventas/ticket/{venta}', [VentaController::class, 'generarTicketPDF'])
+    ->name('ventas.ticket')
+    ->middleware('permiso:ventas,mostrar');
 
-    Route::get('ventas/imprimir/{venta}', [VentaController::class, 'imprimirTicket'])
-        ->name('ventas.imprimir')
-        ->middleware('permiso:ventas,mostrar');
+Route::get('ventas/contrato/{venta}', [VentaController::class, 'contratoPDF'])
+    ->name('ventas.contrato')
+    ->middleware('permiso:ventas,mostrar');
 
     // ✅ NUEVA RUTA: CONTRATO PDF
     Route::get('ventas/contrato/{venta}', [VentaController::class, 'contratoPDF'])

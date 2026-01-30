@@ -9,18 +9,15 @@ class Cliente extends Model
 {
     use HasFactory;
 
+    // Nombre de la tabla
     protected $table = 'clientes';
+        protected $primaryKey = 'id';
 
-    // Si tu PK es id como venías usando
-    protected $primaryKey = 'id';
-
-    public $incrementing = true;
-    protected $keyType = 'int';
-
-    public $timestamps = false;
+ 
+    public $timestamps = true;
 
     protected $fillable = [
-        'cliente',        // ✅ nombre del cliente
+        'cliente',  
         'telefono',
         'correo',
         'identificacion',
