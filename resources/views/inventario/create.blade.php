@@ -4,14 +4,11 @@
 
 <style>
 /* Quitar flechas en input number */
-/* Chrome, Edge, Safari */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
-
-/* Firefox */
 input[type=number] {
     -moz-appearance: textfield;
 }
@@ -35,7 +32,7 @@ input[type=number] {
                 Agregar Terreno
             </h3>
             <div style="color:rgba(255,255,255,.70); font-size:.95rem;" class="mt-1">
-                Captura la información del terreno y asígnalo a un cliente.
+                Captura la información técnica y categoría del terreno.
             </div>
         </div>
 
@@ -79,22 +76,20 @@ input[type=number] {
 
                 <div class="row g-4">
 
-                    {{-- CLIENTE --}}
+                    {{-- CATEGORIA --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Cliente</label>
+                        <label class="form-label fw-semibold" style="color:#0f172a;">Categoría</label>
                         <div class="input-group">
                             <span class="input-group-text"
                                   style="border-radius:14px 0 0 14px; background:#f1f5f9;">
-                                👤
+                                🏷️
                             </span>
-                            <select name="cliente" class="form-select"
+                            <select name="categoria" class="form-select"
                                     style="border-radius:0 14px 14px 0;" required>
                                 <option value="">-- Selecciona --</option>
-                                @foreach($clientes as $c)
-                                    <option value="{{ $c->id }}" {{ old('cliente') == $c->id ? 'selected' : '' }}>
-                                        {{ $c->cliente }}
-                                    </option>
-                                @endforeach
+                                <option value="Basico" {{ old('categoria') == 'Basico' ? 'selected' : '' }}>Basico</option>
+                                <option value="Medio" {{ old('categoria') == 'Medio' ? 'selected' : '' }}>Medio</option>
+                                <option value="Premium" {{ old('categoria') == 'Premium' ? 'selected' : '' }}>Premium</option>
                             </select>
                         </div>
                     </div>
@@ -109,34 +104,31 @@ input[type=number] {
                             </span>
                             <select name="estado" class="form-select"
                                     style="border-radius:0 14px 14px 0;" required>
-                                @foreach(['disponible','apartado','vendido'] as $st)
-                                    <option value="{{ $st }}" {{ old('estado','disponible') === $st ? 'selected' : '' }}>
-                                        {{ strtoupper($st) }}
-                                    </option>
-                                @endforeach
+                                <option value="disponible" {{ old('estado') == 'disponible' ? 'selected' : '' }}>DISPONIBLE</option>
+                                <option value="agotado" {{ old('estado') == 'agotado' ? 'selected' : '' }}>AGOTADO</option>
                             </select>
                         </div>
                     </div>
 
-                    {{-- ALCALDIA --}}
+                    {{-- COLONIA --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Alcaldía</label>
+                        <label class="form-label fw-semibold" style="color:#0f172a;">Colonia</label>
                         <div class="input-group">
                             <span class="input-group-text"
                                   style="border-radius:14px 0 0 14px; background:#f1f5f9;">
                                 📍
                             </span>
                             <input type="text" class="form-control"
-                                   name="alcaldia"
-                                   value="{{ old('alcaldia') }}"
+                                   name="colonia"
+                                   value="{{ old('colonia') }}"
                                    style="border-radius:0 14px 14px 0;"
-                                   placeholder="Ej. Iztapalapa">
+                                   placeholder="Ej. Santa María">
                         </div>
                     </div>
 
                     {{-- UBICACION --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Ubicación</label>
+                        <label class="form-label fw-semibold" style="color:#0f172a;">Ubicación </label>
                         <div class="input-group">
                             <span class="input-group-text"
                                   style="border-radius:14px 0 0 14px; background:#f1f5f9;">
@@ -171,11 +163,10 @@ input[type=number] {
                     {{-- RESUMEN --}}
                     <div class="col-12 col-md-6">
                         @php
-                            $estadoPrev = strtoupper(old('estado','disponible'));
+                            $estadoPrev = strtoupper(old('estado','Disponible'));
                             $badge = match($estadoPrev) {
                                 'DISPONIBLE' => 'background:#dcfce7;color:#166534;border:1px solid #86efac;',
-                                'APARTADO'   => 'background:#fffbeb;color:#92400e;border:1px solid #fcd34d;',
-                                'VENDIDO'    => 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;',
+                                'AGOTADO'    => 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;',
                                 default      => 'background:#e5e7eb;color:#111827;border:1px solid #cbd5e1;',
                             };
                         @endphp
@@ -188,7 +179,6 @@ input[type=number] {
                             </div>
                         </div>
                     </div>
-
 
                 {{-- BOTONES --}}
                 <div class="d-flex gap-2 justify-content-end mt-4">
@@ -210,7 +200,7 @@ input[type=number] {
                                 padding:.55rem 1.1rem;
                                 box-shadow:0 12px 24px rgba(15,23,42,.22);
                             ">
-                        Guardar
+                        Guardar Terreno
                     </button>
                 </div>
 

@@ -13,7 +13,8 @@ class Terreno extends Model
 
     protected $fillable = [
         'codigo',
-        'nombre',
+        'nombre', 
+        'categoria_id', 
         'ubicacion',
         'alcaldia',
         'precio_total',
@@ -21,8 +22,20 @@ class Terreno extends Model
         'descripcion',
     ];
 
+    /**
+     * Relación con las Ventas
+     */
     public function ventas()
     {
         return $this->hasMany(Venta::class, 'terreno_id');
+    }
+
+    /**
+     * Relación con la Categoría (ESTA ES LA QUE FALTABA)
+     */
+    public function categoria()
+    {
+        // Esto vincula el terreno con su categoría
+        return $this->belongsTo(Categoria::class, 'categoria_id');
     }
 }

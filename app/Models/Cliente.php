@@ -10,21 +10,21 @@ class Cliente extends Model
     use HasFactory;
 
     protected $table = 'clientes';
-
-    // Si tu PK es id como venías usando
     protected $primaryKey = 'id';
-
-    public $incrementing = true;
-    protected $keyType = 'int';
-
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
-        'cliente',        // ✅ nombre del cliente
+        'cliente',  
         'telefono',
         'correo',
         'identificacion',
         'direccion',
         'fecha_compra',
     ];
+
+    
+    public function compras()
+    {
+        return $this->hasMany(Compra::class, 'cliente_id');
+    }
 }

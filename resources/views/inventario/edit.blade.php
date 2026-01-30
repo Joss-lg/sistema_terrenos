@@ -4,14 +4,11 @@
 
 <style>
 /* Quitar flechas en input number */
-/* Chrome, Edge, Safari */
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
-
-/* Firefox */
 input[type=number] {
     -moz-appearance: textfield;
 }
@@ -35,7 +32,7 @@ input[type=number] {
                 Editar Terreno #{{ $terreno->id }}
             </h3>
             <div style="color:rgba(255,255,255,.70); font-size:.95rem;" class="mt-1">
-                Actualiza cliente, ubicación, precio y estado del terreno.
+                Actualiza categoría, ubicación, precio y estado del terreno.
             </div>
         </div>
 
@@ -80,27 +77,26 @@ input[type=number] {
 
                 <div class="row g-4">
 
-                    {{-- CLIENTE --}}
+                    {{-- CATEGORÍA --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Cliente</label>
+                        <label class="form-label fw-semibold" style="color:#0f172a;">Categoría</label>
                         <div class="input-group">
                             <span class="input-group-text"
                                   style="border-radius:14px 0 0 14px; background:#f1f5f9;">
-                                👤
+                                🏷️
                             </span>
-                            <select name="cliente" class="form-select"
+                            <select name="categoria" class="form-select"
                                     style="border-radius:0 14px 14px 0;"
                                     required>
                                 <option value="">-- Selecciona --</option>
-                                @foreach($clientes as $c)
-                                    <option value="{{ $c->id }}"
-                                        {{ (string)old('cliente', $terreno->cliente) === (string)$c->id ? 'selected' : '' }}>
-                                        {{ $c->cliente }}
+                                @foreach(['Basico', 'Medio', 'Premium'] as $cat)
+                                    <option value="{{ $cat }}" 
+                                        {{ old('categoria', $terreno->categoria) == $cat ? 'selected' : '' }}>
+                                        {{ $cat }}
                                     </option>
                                 @endforeach
                             </select>
                         </div>
-                        <small class="text-muted">Selecciona quién está asignado al terreno.</small>
                     </div>
 
                     {{-- ESTADO --}}
@@ -114,20 +110,15 @@ input[type=number] {
                             <select name="estado" class="form-select"
                                     style="border-radius:0 14px 14px 0;"
                                     required>
-                                @foreach(['disponible','apartado','vendido'] as $st)
-                                    <option value="{{ $st }}"
-                                        {{ old('estado', $terreno->estado) === $st ? 'selected' : '' }}>
-                                        {{ strtoupper($st) }}
-                                    </option>
-                                @endforeach
+                                <option value="disponible" {{ old('estado', $terreno->estado) == 'disponible' ? 'selected' : '' }}>DISPONIBLE</option>
+                                <option value="agotado" {{ old('estado', $terreno->estado) == 'agotado' ? 'selected' : '' }}>AGOTADO</option>
                             </select>
                         </div>
-                        <small class="text-muted">Define el estatus actual del terreno.</small>
                     </div>
 
-                    {{-- ALCALDIA --}}
+                    {{-- COLONIA --}}
                     <div class="col-12 col-md-6">
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Alcaldía</label>
+                        <label class="form-label fw-semibold" style="color:#0f172a;">Colonia</label>
                         <div class="input-group">
                             <span class="input-group-text"
                                   style="border-radius:14px 0 0 14px; background:#f1f5f9;">
@@ -135,10 +126,10 @@ input[type=number] {
                             </span>
                             <input type="text"
                                    class="form-control"
-                                   name="alcaldia"
-                                   value="{{ old('alcaldia', $terreno->alcaldia) }}"
+                                   name="colonia"
+                                   value="{{ old('colonia', $terreno->colonia) }}"
                                    style="border-radius:0 14px 14px 0;"
-                                   placeholder="Ej. Iztapalapa">
+                                   placeholder="Ej. Santa María">
                         </div>
                     </div>
 
@@ -177,23 +168,22 @@ input[type=number] {
                         </div>
                     </div>
 
-                    {{-- RESUMEN (badge visual) --}}
+                    {{-- RESUMEN --}}
                     <div class="col-12 col-md-6">
                         @php
-                            $estado = strtoupper(old('estado', $terreno->estado ?? 'DISPONIBLE'));
+                            $estado = strtoupper(old('estado', $terreno->estado ?? 'Disponible'));
                             $badge = match($estado) {
                                 'DISPONIBLE' => 'background:#dcfce7;color:#166534;border:1px solid #86efac;',
-                                'APARTADO'   => 'background:#fffbeb;color:#92400e;border:1px solid #fcd34d;',
-                                'VENDIDO'    => 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;',
+                                'AGOTADO'    => 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;',
                                 default      => 'background:#e5e7eb;color:#111827;border:1px solid #cbd5e1;',
                             };
                         @endphp
 
                         <div class="p-3"
                              style="border-radius:14px; {{ $badge }}">
-                            <div class="fw-bold">Resumen</div>
+                            <div class="fw-bold">Vista Previa Actual</div>
                             <div style="font-size:.95rem;">
-                                Cliente: <b>{{ $terreno->clienteRel?->cliente ?? 'Sin asignar' }}</b><br>
+                                Categoría: <b>{{ old('categoria', $terreno->categoria) }}</b><br>
                                 Estado: <b>{{ $estado }}</b><br>
                                 Precio: <b>${{ number_format(old('precio_total', $terreno->precio_total) ?? 0, 2) }}</b>
                             </div>

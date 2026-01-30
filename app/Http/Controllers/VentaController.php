@@ -2,262 +2,116 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Terreno;
-use App\Models\Caja;
-use App\Models\Categoria;
-use App\Models\Producto;
-use App\Models\Venta;
-use App\Models\DetalleVenta;
-use App\Models\Inventario;
-use App\Models\Cliente;
-use App\Models\PagoVenta; // ✅ NUEVO
-
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Terreno; 
+use App\Models\Cliente;
+use App\Models\Venta;
+use App\Models\Caja;
+use App\Models\MovimientoCaja;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
-use Carbon\Carbon;
-
-use PDF;
+use Illuminate\Support\Facades\Auth;
+// Importamos la fachada de PDF
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class VentaController extends Controller
 {
     /**
-     * Muestra la interfaz del Punto de Venta (TPV).
+     * Muestra la vista del TPV con clientes y terrenos disponibles.
      */
     public function tpv()
     {
-        // 1. Verificar si la caja está abierta
-        // ✅ Usar caja sistema (ya no abierta/cerrada)
-        $cajaAbierta = $this->cajaSistema();
-
-        }
-
-        // 2. Datos TPV
-        $categorias = Categoria::orderBy('nombre')->get();
-
-        $productos = Producto::with('inventario', 'categoria')
-            ->whereHas('inventario', function ($query) {
-                $query->where('stock', '>', 0);
-            })
-            // ✅ IMPORTANTE: aquí NO debe ir "cliente"
-            // Usa un campo real de productos (elige el que tengas): nombre / descripcion / id
-            ->orderBy('nombre', 'asc')
-            ->get();
-
-        // ✅ Tu tabla clientes usa columna "cliente"
-        $clientes = Cliente::select('id', 'cliente', 'telefono', 'direccion')
-            ->orderBy('cliente', 'asc')
-            ->get();
-
-        // ✅ Terrenos disponibles
+        // Verificamos si hay una caja abierta para permitir ventas
+        $cajaAbierta = Caja::where('estado', 'sistema')->first();
+        
+        // Traemos todos los clientes ordenados por nombre
+        $clientes = Cliente::orderBy('cliente', 'asc')->get();
+        
+        /** * CORRECCIÓN: Quitamos with('categoria') porque la categoría 
+         * es un campo de texto directo en la tabla 'terrenos'.
+         */
         $terrenos = Terreno::where('estado', 'disponible')
-            ->orderBy('id', 'asc')
-            ->get();
+                    ->orderBy('id', 'asc')
+                    ->get();
 
-        return view('ventas.tpv', compact('cajaAbierta', 'categorias', 'productos', 'clientes', 'terrenos'));
+        return view('ventas.tpv', compact('cajaAbierta', 'clientes', 'terrenos'));
     }
 
     /**
-     * Almacena una nueva venta procesada desde el TPV (Terreno + Financiamiento + Pagos automáticos).
+     * Procesa y guarda la venta, actualiza el terreno y registra el movimiento de caja.
      */
     public function store(Request $request)
     {
-        // ✅ VALIDACIÓN COMPLETA
         $request->validate([
-            'cliente_id' => 'nullable|exists:clientes,id',
-
-            // NUEVO: Terreno + financiamiento
-            'terreno_id' => 'required|exists:terrenos,id',
-            'fecha_compra' => 'required|date',
-            'mensualidades' => 'required|in:12,24,36,48,60',
-            'pago_inicial' => 'required|in:2500,5000',
-            'dia_pago' => 'required|integer|min:15|max:20',
-
-            // TPV existente
-            'metodo_pago' => 'required|string|in:efectivo,tarjeta,transferencia,credito',
-            'total' => 'required|numeric|min:0.01',
-            'monto_recibido' => 'nullable|numeric|min:0',
-            'monto_entregado' => 'nullable|numeric|min:0',
-
-            'detalles' => 'nullable|array',
+            'cliente_id'    => 'required',
+            'terreno_id'    => 'required',
+            'total'         => 'required|numeric',
+            'pago_inicial'  => 'required|numeric',
+            'mensualidades' => 'required|integer',
+            'fecha_compra'  => 'required|date',
         ]);
 
-        // 2. Caja abierta
-        $cajaAbierta = $this->cajaSistema();
-
-}
-
-        // 3. Terreno disponible (lock para evitar doble venta)
-        $terreno = Terreno::where('id', $request->terreno_id)->lockForUpdate()->first();
-
-        if (!$terreno) {
-            return response()->json(['message' => 'Terreno no encontrado.'], 404);
-        }
-
-        if ($terreno->estado !== 'disponible') {
-            return response()->json(['message' => 'El terreno ya no está disponible.'], 422);
-        }
-
-        // Forzar total = precio del terreno (seguridad)
-        $totalTerreno   = (float) $terreno->precio_total;
-        $pagoInicial    = (float) $request->pago_inicial;
-        $mensualidades  = (int) $request->mensualidades;
-        $diaPago        = (int) $request->dia_pago;
-
-        $montoFinanciado = max(0, $totalTerreno - $pagoInicial);
-        $montoMensual    = $mensualidades > 0 ? round($montoFinanciado / $mensualidades, 2) : 0;
-
-        $fechaCompra     = Carbon::parse($request->fecha_compra);
-        $fechaPrimerPago = $fechaCompra->copy()->addDays(5);
-
         DB::beginTransaction();
-
         try {
-            // 4. Crear venta con campos nuevos
+            $caja = Caja::where('estado', 'sistema')->first();
+            $terreno = Terreno::find($request->terreno_id);
+
+            // 1. Creamos el registro de la venta
             $venta = Venta::create([
-                'terreno_id' => $terreno->id,
-                'cliente_id' => $request->cliente_id,
-                'user_id' => Auth::id(),
-
-                'fecha_hora' => now(),
-                'fecha_compra' => $fechaCompra->toDateString(),
-                'mensualidades' => $mensualidades,
-                'pago_inicial' => $pagoInicial,
-                'monto_mensual' => $montoMensual,
-                'dia_pago' => $diaPago,
-                'fecha_primer_pago' => $fechaPrimerPago->toDateString(),
-                'estado_venta' => 'financiado',
-
-                'metodo_pago' => $request->metodo_pago,
-                'total' => $totalTerreno,
-                'monto_recibido' => $request->monto_recibido ?? $totalTerreno,
-                'monto_entregado' => $request->monto_entregado ?? 0,
+                'cliente_id'    => $request->cliente_id,
+                'terreno_id'    => $request->terreno_id,
+                'total'         => $request->total,
+                'pago_inicial'  => $request->pago_inicial,
+                'mensualidades' => $request->mensualidades,
+                // Cálculo automático del monto mensual
+                'monto_mensual' => ($request->total - $request->pago_inicial) / $request->mensualidades,
+                'fecha_compra'  => $request->fecha_compra,
+                'user_id'       => Auth::id(),
+                'metodo_pago'   => $request->metodo_pago ?? 'efectivo',
+                'detalles'      => $request->detalles, 
             ]);
 
-            // ==========================================================
-            // ✅ NUEVO: GENERAR CALENDARIO DE PAGOS
-            // ==========================================================
-            $pagos = [];
+            // 2. Cambiamos el estado del terreno a vendido
+            $terreno->update(['estado' => 'vendido']);
 
-            // Base = compra + 5 días
-            $fechaBase = Carbon::parse($venta->fecha_compra)->addDays(5);
-
-            // Pago 1: el día 15-20 del mes que corresponda
-            $fechaPago = $fechaBase->copy();
-            $fechaPago->day = $diaPago;
-
-            if ($fechaPago->lt($fechaBase)) {
-                $fechaPago = $fechaPago->addMonthNoOverflow();
-                $fechaPago->day = $diaPago;
-            }
-
-            for ($i = 1; $i <= (int) $venta->mensualidades; $i++) {
-                $pagos[] = [
-                    'venta_id' => $venta->id,
-                    'numero_pago' => $i,
-                    'fecha_vencimiento' => $fechaPago->toDateString(),
-                    'monto' => $venta->monto_mensual,
-                    'estado' => 'pendiente',
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-
-                $fechaPago = $fechaPago->copy()->addMonthNoOverflow();
-                $fechaPago->day = $diaPago;
-            }
-
-            // Inserción masiva
-            DB::table('pago_ventas')->insert($pagos);
-
-            // 5. Detalles + stock
-            if (!empty($request->detalles)) {
-            foreach ($request->detalles as $detalle) {
-                DetalleVenta::create([
-                    'venta_id' => $venta->id,
-                    'producto_id' => $detalle['producto_id'],
-                    'cantidad' => $detalle['cantidad'],
-                    'precio_unitario' => $detalle['precio_unitario'],
-                    'importe' => $detalle['importe'],
-                ]);
-
-                $inventario = Inventario::where('producto_id', $detalle['producto_id'])->first();
-
-                if (!$inventario) {
-                    throw ValidationException::withMessages([
-                        'inventario' => 'Error: No se encontró inventario para el producto ID ' . $detalle['producto_id']
-                    ]);
-                }
-
-                if ($inventario->stock < $detalle['cantidad']) {
-                    throw ValidationException::withMessages([
-                        'stock' => 'Stock insuficiente para el producto ID ' . $detalle['producto_id']
-                    ]);
-                }
-
-                $inventario->decrement('stock', $detalle['cantidad']);
-            }
-
-            // 6. Marcar terreno como vendido
-            $terreno->estado = 'vendido';
-            $terreno->save();
+            // 3. Registramos el ingreso del enganche en la caja
+            MovimientoCaja::create([
+                'caja_id'     => $caja->id,
+                'user_id'     => Auth::id(),
+                'tipo'        => 'ingreso',
+                'descripcion' => "PAGO INICIAL VENTA | Lote: {$terreno->nombre} | Notas: {$request->detalles}",
+                'monto'       => $request->pago_inicial,
+                'metodo_pago' => ucfirst($request->metodo_pago ?? 'efectivo'),
+            ]);
 
             DB::commit();
-
+            
+            // DEVOLVEMOS EL ID DE LA VENTA para que el TPV pueda abrir el PDF
             return response()->json([
-                'message' => 'Venta registrada exitosamente.',
-                'venta_id' => $venta->id
-            ], 201);
-
-        } catch (ValidationException $e) {
-            DB::rollBack();
-
-            return response()->json([
-                'message' => 'Error de validación.',
-                'errors' => $e->errors()
-            ], 422);
+                'success' => true, 
+                'venta_id' => $venta->id 
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-
             return response()->json([
-                'message' => 'Error interno al procesar la venta. Verifique los logs.',
-                'error' => $e->getMessage()
+                'success' => false, 
+                'message' => 'Error en el servidor: ' . $e->getMessage()
             ], 500);
         }
     }
 
     /**
-     * Genera un PDF del ticket de venta.
+     * Genera y descarga el PDF del contrato de compra-venta.
      */
-    public function generarTicketPDF(Venta $venta)
+    public function descargarContrato($id)
     {
-        $venta->load('user', 'cliente', 'terreno', 'detalles.producto');
-        $pdf = PDF::loadView('ventas.ticket_pdf', compact('venta'));
-        $pdf->setPaper([0, 0, 226.77, 800]);
+        // Buscamos la venta con sus relaciones cargadas para el PDF
+        $venta = Venta::with(['cliente', 'terreno'])->findOrFail($id);
 
-        return $pdf->stream('ticket_venta_' . $venta->id . '.pdf');
-    }
+        // Cargamos la vista de blade que diseñamos para el contrato
+        $pdf = Pdf::loadView('ventas.contrato', compact('venta'));
 
-    /**
-     * Contrato PDF con calendario de pagos.
-     */
-    public function contratoPDF(Venta $venta)
-    {
-        $venta->load('user', 'cliente', 'terreno', 'pagos');
-        $pdf = PDF::loadView('ventas.contrato_pdf', compact('venta'));
-        $pdf->setPaper('letter');
-
-        return $pdf->stream('contrato_venta_' . $venta->id . '.pdf');
-    }
-
-    /**
-     * Vista envoltorio para imprimir PDF.
-     */
-    public function imprimirTicket(Venta $venta)
-    {
-        $urlPdf = route('ventas.ticket', $venta);
-        return view('ventas.imprimir_pdf', compact('urlPdf'));
+        // stream() abre el archivo en el navegador para imprimirlo
+        return $pdf->stream('Contrato_Venta_' . $venta->id . '.pdf');
     }
 }
-
