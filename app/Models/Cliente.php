@@ -2,37 +2,21 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Cliente extends Model
 {
-    use HasFactory;
-
-    // Nombre de la tabla
     protected $table = 'clientes';
 
-        protected $primaryKey = 'id';
-
- 
-
+    // Importante: Si antes tenías $primaryKey = 'idCli', bórralo o cámbialo a 'id'
     protected $primaryKey = 'id';
 
-    public $timestamps = true;
-
     protected $fillable = [
-        'cliente',  
-        'telefono',
+        'cliente', // Antes era Nombre
         'correo',
-        'identificacion',
         'direccion',
         'fecha_compra',
+        'telefono',
+        'identificacion'
     ];
-
-    
-    public function compras()
-    {
-        return $this->hasMany(Compra::class, 'cliente_id');
-    }
-
 }

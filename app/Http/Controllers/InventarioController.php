@@ -20,28 +20,25 @@ class InventarioController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Validación: Aseguramos que los nombres coincidan con el formulario
+        // 1. Validación: Eliminamos 'descripcion' de las reglas
         $request->validate([
             'categoria'    => ['required', 'in:Basico,Medio,Premium'], 
             'colonia'      => ['nullable', 'string', 'max:150'],
             'ubicacion'    => ['nullable', 'string', 'max:255'],
             'precio_total' => ['required', 'numeric', 'min:0'],
             'estado'       => ['required', 'in:disponible,agotado'],
-            'descripcion'  => ['nullable', 'string'],
         ]);
 
         // 2. Creación del registro
         $terreno = new Inventario();
         
-        // Asignación de campos que SÍ existen en tu base de datos
         $terreno->categoria    = $request->categoria;
         $terreno->colonia      = $request->colonia; 
         $terreno->ubicacion    = $request->ubicacion;
         $terreno->precio_total = $request->precio_total;
         $terreno->estado       = $request->estado;
-        $terreno->descripcion  = $request->descripcion;
         
-        
+        // Ya no asignamos $terreno->descripcion porque la columna no existe
 
         $terreno->save();
 
@@ -56,13 +53,13 @@ class InventarioController extends Controller
 
     public function update(Request $request, $id)
     {
+        // Eliminamos 'descripcion' de la validación
         $request->validate([
             'categoria'    => ['required', 'in:Basico,Medio,Premium'],
             'colonia'      => ['nullable', 'string', 'max:150'],
             'ubicacion'    => ['nullable', 'string', 'max:255'],
             'precio_total' => ['required', 'numeric', 'min:0'],
             'estado'       => ['required', 'in:disponible,agotado'],
-            'descripcion'  => ['nullable', 'string'],
         ]);
 
         $terreno = Inventario::findOrFail($id);
@@ -72,9 +69,8 @@ class InventarioController extends Controller
         $terreno->ubicacion    = $request->ubicacion;
         $terreno->precio_total = $request->precio_total;
         $terreno->estado       = $request->estado;
-        $terreno->descripcion  = $request->descripcion;
         
-        // Asegúrate de que aquí tampoco se llame a $terreno->cliente ni $terreno->nombre
+        // Eliminamos la asignación de descripción aquí también
 
         $terreno->save();
 

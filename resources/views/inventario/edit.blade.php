@@ -32,11 +32,7 @@ input[type=number] {
                 Editar Terreno #{{ $terreno->id }}
             </h3>
             <div style="color:rgba(255,255,255,.70); font-size:.95rem;" class="mt-1">
-<<<<<<< HEAD
-                
-=======
                 Actualiza categoría, ubicación, precio y estado del terreno.
->>>>>>> origin/adaneli
             </div>
         </div>
 
@@ -64,7 +60,7 @@ input[type=number] {
         </div>
     @endif
 
-    {{-- CARD FORM: Fondo blanco con campos grises --}}
+    {{-- CARD FORM --}}
     <div class="card border-0"
          style="
             border-radius:18px;
@@ -83,7 +79,6 @@ input[type=number] {
 
                     {{-- CATEGORÍA --}}
                     <div class="col-12 col-md-6">
-<<<<<<< HEAD
                         <label class="form-label fw-bold" style="color:#0d2c4b;">Categoría</label>
                         <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
                             <span class="input-group-text border-0"
@@ -92,17 +87,6 @@ input[type=number] {
                             </span>
                             <select name="categoria" class="form-select border-0 p-3"
                                     style="background:#f1f5f9; color:#000000;" required>
-=======
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Categoría</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
-                                🏷️
-                            </span>
-                            <select name="categoria" class="form-select"
-                                    style="border-radius:0 14px 14px 0;"
-                                    required>
->>>>>>> origin/adaneli
                                 <option value="">-- Selecciona --</option>
                                 @foreach(['Basico', 'Medio', 'Premium'] as $cat)
                                     <option value="{{ $cat }}" 
@@ -122,14 +106,8 @@ input[type=number] {
                                   style="background:#f1f5f9; color:#0d2c4b;">
                                 ✅
                             </span>
-<<<<<<< HEAD
                             <select name="estado" class="form-select border-0 p-3"
                                     style="background:#f1f5f9; color:#000000;" required>
-=======
-                            <select name="estado" class="form-select"
-                                    style="border-radius:0 14px 14px 0;"
-                                    required>
->>>>>>> origin/adaneli
                                 <option value="disponible" {{ old('estado', $terreno->estado) == 'disponible' ? 'selected' : '' }}>DISPONIBLE</option>
                                 <option value="agotado" {{ old('estado', $terreno->estado) == 'agotado' ? 'selected' : '' }}>AGOTADO</option>
                             </select>
@@ -138,7 +116,6 @@ input[type=number] {
 
                     {{-- COLONIA --}}
                     <div class="col-12 col-md-6">
-<<<<<<< HEAD
                         <label class="form-label fw-bold" style="color:#0d2c4b;">Colonia</label>
                         <div class="input-group shadow-none" style="border-radius:12px; overflow:hidden;">
                             <span class="input-group-text border-0"
@@ -150,19 +127,6 @@ input[type=number] {
                                    name="colonia"
                                    value="{{ old('colonia', $terreno->colonia) }}"
                                    style="background:#f1f5f9; color:#000000;"
-=======
-                        <label class="form-label fw-semibold" style="color:#0f172a;">Colonia</label>
-                        <div class="input-group">
-                            <span class="input-group-text"
-                                  style="border-radius:14px 0 0 14px; background:#f1f5f9;">
-                                📍
-                            </span>
-                            <input type="text"
-                                   class="form-control"
-                                   name="colonia"
-                                   value="{{ old('colonia', $terreno->colonia) }}"
-                                   style="border-radius:0 14px 14px 0;"
->>>>>>> origin/adaneli
                                    placeholder="Ej. Santa María">
                         </div>
                     </div>
@@ -209,20 +173,11 @@ input[type=number] {
                             $badge = match($estado) {
                                 'DISPONIBLE' => 'background:#dcfce7;color:#166534;border:1px solid #86efac;',
                                 'AGOTADO'    => 'background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;',
-<<<<<<< HEAD
                                 default      => 'background:#f1f5f9;color:#0d2c4b;border:1px solid #e2e8f0;',
                             };
                         @endphp
 
                         <div class="p-3" style="border-radius:14px; {{ $badge }}">
-=======
-                                default      => 'background:#e5e7eb;color:#111827;border:1px solid #cbd5e1;',
-                            };
-                        @endphp
-
-                        <div class="p-3"
-                             style="border-radius:14px; {{ $badge }}">
->>>>>>> origin/adaneli
                             <div class="fw-bold">Vista Previa Actual</div>
                             <div style="font-size:.95rem;">
                                 Categoría: <b>{{ old('categoria', $terreno->categoria) }}</b><br>

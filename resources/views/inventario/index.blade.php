@@ -74,7 +74,7 @@
                 $estado = $estadoNorm($inv->estado ?? 'DISPONIBLE');
                 $b = $badge($estado);
                 $a = $accent($estado);
-                // Ahora usamos la categoría como título principal
+                // Usamos la categoría como título principal
                 $categoria = $inv->categoria ?? 'Sin Categoría';
             @endphp
 
@@ -89,7 +89,7 @@
                         position:relative;
                      ">
 
-                    {{-- Acento por estado --}}
+                    {{-- Acento lateral por estado --}}
                     <div style="
                         position:absolute;left:0;top:0;bottom:0;
                         width:7px;background:{{ $a }};
@@ -102,13 +102,7 @@
                                 <div class="fw-bold text-uppercase"
                                      style="font-size:1.02rem;letter-spacing:.06em;color:#0f172a;">
                                     {{ $categoria }}
-                                </div>
-<<<<<<< HEAD
-                               
-=======
-                                <small class="text-muted">Categoría del Terreno</small>
->>>>>>> origin/adaneli
-                            </div>
+                                
 
                             <span class="px-3 py-1"
                                   style="
@@ -144,6 +138,7 @@
                             </div>
                         </div>
 
+                        {{-- ACCIONES --}}
                         <div class="d-flex gap-2 mt-3">
                             <a href="{{ route('inventario.edit', $inv->id) }}"
                                class="btn flex-fill"
@@ -185,7 +180,7 @@
         @empty
             <div class="col-12">
                 <div class="alert alert-info" style="border-radius:16px;">
-                    No hay terrenos registrados.
+                    No hay terrenos registrados en el sistema.
                 </div>
             </div>
         @endforelse
