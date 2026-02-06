@@ -2,46 +2,28 @@
 
 namespace App\Http\Controllers;
 
-
 use App\Models\Terreno;
 use App\Models\Venta;
 use App\Models\Cliente;
 use App\Models\PagoVenta;
-use App\Models\Inventario;
-use App\Models\DetalleVenta;
-
-use Illuminate\Http\Request;
-use App\Models\Terreno; 
-use App\Models\Cliente;
-use App\Models\Venta;
 use App\Models\Caja;
 use App\Models\MovimientoCaja;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
-use Carbon\Carbon;
-
 use Illuminate\Support\Facades\Auth;
-// Importamos la fachada de PDF
+use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
-
 
 class VentaController extends Controller
 {
     /**
-
      * Muestra la vista del TPV con clientes y terrenos disponibles.
      */
     public function tpv()
     {
-        // Verificamos si hay una caja abierta para permitir ventas
         $cajaAbierta = Caja::where('estado', 'sistema')->first();
-        
-        // Traemos todos los clientes ordenados por nombre
         $clientes = Cliente::orderBy('cliente', 'asc')->get();
-        
-        /** * CORRECCIÓN: Quitamos with('categoria') porque la categoría 
-         * es un campo de texto directo en la tabla 'terrenos'.
-         */
         $terrenos = Terreno::where('estado', 'disponible')
                     ->orderBy('id', 'asc')
                     ->get();
@@ -50,130 +32,127 @@ class VentaController extends Controller
     }
 
     /**
-     * Procesa y guarda la venta, actualiza el terreno y registra el movimiento de caja.
-
+     * Procesa la venta, genera calendario de pagos y registra movimiento en caja.
      */
     public function store(Request $request)
     {
-        $request->validate([
-
-            'cliente_id' => 'required|exists:clientes,idCli',
-            'terreno_id' => 'required|exists:terrenos,id',
-            'fecha_compra' => 'required|date',
-            'mensualidades' => 'required|in:12,24,36,48,60',
-            'pago_inicial' => 'required|numeric',
-            'dia_pago' => 'required|integer|min:15|max:20', // Tope de 5 días (15 al 20)
+        // 1. VALIDACIÓN CON MENSAJES PERSONALIZADOS
+        $validator = Validator::make($request->all(), [
+            'cliente_id'    => 'required|exists:clientes,id',
+            'terreno_id'    => 'required|exists:terrenos,id',
+            'total'         => 'required|numeric',
+            'pago_inicial'  => 'required|numeric|min:0',
+            'mensualidades' => 'required|integer|in:12,24,36,48,60',
+            'fecha_compra'  => 'required|date', 
+            'metodo_pago'   => 'nullable|string'
+        ], [
+            'cliente_id.required'    => 'Debes seleccionar un cliente válido.',
+            'terreno_id.required'    => 'Debes seleccionar un terreno.',
+            'fecha_compra.required'  => 'La fecha de compra es obligatoria para el calendario.',
+            'mensualidades.in'       => 'El plazo seleccionado no es válido.',
+            'pago_inicial.numeric'   => 'El enganche debe ser un valor numérico.'
         ]);
 
-        $terreno = Terreno::findOrFail($request->terreno_id);
-        
-        // Cálculo de financiamiento
-        $totalTerreno = (float) $terreno->precio_total;
-        $montoFinanciado = $totalTerreno - (float)$request->pago_inicial;
-        $montoMensual = round($montoFinanciado / (int)$request->mensualidades, 2);
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first()
+            ], 422);
+        }
 
         DB::beginTransaction();
         try {
-            // 1. Crear la Venta
+            $terreno = Terreno::findOrFail($request->terreno_id);
+            $caja = Caja::where('estado', 'sistema')->first();
+
+            if (!$caja) {
+                throw new \Exception("No hay una caja abierta en el sistema para registrar el enganche.");
+            }
+
+            // Validar que el enganche no supere al total
+            if ($request->pago_inicial >= $request->total) {
+                throw new \Exception("El pago inicial no puede ser igual o mayor al precio total.");
+            }
+
+            // 2. Cálculos de Financiamiento
+            $montoFinanciado = $request->total - $request->pago_inicial;
+            $montoMensual = round($montoFinanciado / $request->mensualidades, 2);
+
+            // 3. Crear la Venta
             $venta = Venta::create([
-                'terreno_id' => $terreno->id,
-                'cliente_id' => $request->cliente_id,
-                'user_id' => Auth::id(),
-                'fecha_compra' => $request->fecha_compra,
+                'cliente_id'    => $request->cliente_id,
+                'terreno_id'    => $request->terreno_id,
+                'user_id'       => Auth::id(),
+                'total'         => $request->total,
+                'pago_inicial'  => $request->pago_inicial,
                 'mensualidades' => $request->mensualidades,
-                'pago_inicial' => $request->pago_inicial,
                 'monto_mensual' => $montoMensual,
-                'dia_pago' => $request->dia_pago,
-                'total' => $totalTerreno,
-                'estado_venta' => 'financiado',
-                'metodo_pago' => $request->metodo_pago ?? 'credito'
+                'fecha_compra'  => $request->fecha_compra,
+                'dia_pago'      => 20, // Regla fija del día 20
+                'metodo_pago'   => $request->metodo_pago ?? 'efectivo',
+                'estado_venta'  => 'financiado',
+                'detalles'      => $request->detalles,
             ]);
 
-            // 2. Generar Calendario de Pagos (Regla del día 20)
+            // 4. Generar Calendario de Pagos
             $fechaPago = Carbon::parse($request->fecha_compra)->addMonth();
-            $fechaPago->day = $request->dia_pago; // Establecer el día límite (ej. 20)
+            $fechaPago->day = 20; 
 
-            for ($i = 1; $i <= $venta->mensualidades; $i++) {
+            for ($i = 1; $i <= $request->mensualidades; $i++) {
                 PagoVenta::create([
-                    'venta_id' => $venta->id,
-                    'numero_pago' => $i,
+                    'venta_id'          => $venta->id,
+                    'numero_pago'       => $i,
                     'fecha_vencimiento' => $fechaPago->toDateString(),
-                    'monto' => $montoMensual,
-                    'estado' => 'pendiente',
+                    'monto'             => $montoMensual,
+                    'estado'            => 'pendiente',
                 ]);
                 $fechaPago->addMonthNoOverflow();
             }
 
-            $terreno->update(['estado' => 'vendido']);
-            DB::commit();
-            return response()->json(['message' => 'Venta y plan de pagos creados', 'venta_id' => $venta->id]);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
-
-            'cliente_id'    => 'required',
-            'terreno_id'    => 'required',
-            'total'         => 'required|numeric',
-            'pago_inicial'  => 'required|numeric',
-            'mensualidades' => 'required|integer',
-            'fecha_compra'  => 'required|date',
-        ]);
-
-        DB::beginTransaction();
-        try {
-            $caja = Caja::where('estado', 'sistema')->first();
-            $terreno = Terreno::find($request->terreno_id);
-
-            // 1. Creamos el registro de la venta
-            $venta = Venta::create([
-                'cliente_id'    => $request->cliente_id,
-                'terreno_id'    => $request->terreno_id,
-                'total'         => $request->total,
-                'pago_inicial'  => $request->pago_inicial,
-                'mensualidades' => $request->mensualidades,
-                // Cálculo automático del monto mensual
-                'monto_mensual' => ($request->total - $request->pago_inicial) / $request->mensualidades,
-                'fecha_compra'  => $request->fecha_compra,
-                'user_id'       => Auth::id(),
-                'metodo_pago'   => $request->metodo_pago ?? 'efectivo',
-                'detalles'      => $request->detalles, 
-            ]);
-
-            // 2. Cambiamos el estado del terreno a vendido
+            // 5. Actualizar Terreno y Caja
             $terreno->update(['estado' => 'vendido']);
 
-            // 3. Registramos el ingreso del enganche en la caja
             MovimientoCaja::create([
                 'caja_id'     => $caja->id,
                 'user_id'     => Auth::id(),
                 'tipo'        => 'ingreso',
-                'descripcion' => "PAGO INICIAL VENTA | Lote: {$terreno->nombre} | Notas: {$request->detalles}",
+                'descripcion' => "ENGANCHE VENTA | Lote: {$terreno->nombre} | Cliente: {$request->cliente_id}",
                 'monto'       => $request->pago_inicial,
                 'metodo_pago' => ucfirst($request->metodo_pago ?? 'efectivo'),
             ]);
 
             DB::commit();
-            
-            // DEVOLVEMOS EL ID DE LA VENTA para que el TPV pueda abrir el PDF
-            return response()->json([
-                'success' => true, 
-                'venta_id' => $venta->id 
-            ]);
+            return response()->json(['success' => true, 'venta_id' => $venta->id]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'success' => false, 
-                'message' => 'Error en el servidor: ' . $e->getMessage()
-            ], 500);
-
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
 
     /**
+     * API: Obtener datos de un cliente para el resumen automático.
+     */
+    public function getClienteApi($id)
+    {
+        $cliente = Cliente::find($id);
+        return response()->json($cliente);
+    }
 
-     * REGISTRAR COBRO: Aplica 10% de multa si es después de la fecha límite.
+    /**
+     * API: Filtrar terrenos por categoría.
+     */
+    public function getTerrenosPorCategoria($categoria)
+    {
+        $query = Terreno::where('estado', 'disponible');
+        if ($categoria !== 'todos') {
+            $query->where('categoria', $categoria);
+        }
+        return response()->json($query->get());
+    }
+
+    /**
+     * REGISTRAR COBRO: Aplica 10% de multa si es después del día vencido.
      */
     public function registrarCobro(Request $request, $pago_id)
     {
@@ -181,59 +160,138 @@ class VentaController extends Controller
         $hoy = Carbon::now();
         $recargo = 0.00;
 
-        // Si hoy es mayor a la fecha de vencimiento (pasó del día 20)
         if ($hoy->gt($pago->fecha_vencimiento)) {
-            $recargo = $pago->monto * 0.10; // Multa del 10%
+            $recargo = $pago->monto * 0.10;
         }
 
         $pago->update([
-            'estado' => 'pagado',
-            'fecha_pago' => $hoy->toDateString(),
-            'recargo_aplicado' => $recargo,
-            'monto_total_cobrado' => $pago->monto + $recargo,
-            'tipo_pago' => 'normal',
-            'referencia' => $request->referencia
+            'estado'               => 'pagado',
+            'fecha_pago'           => $hoy->toDateString(),
+            'recargo_aplicado'     => $recargo,
+            'monto_total_cobrado'  => $pago->monto + $recargo,
+            'tipo_pago'            => 'normal',
+            'referencia'           => $request->referencia
         ]);
 
-        return response()->json(['message' => 'Pago procesado exitosamente', 'total_cobrado' => $pago->monto_total_cobrado]);
+        return response()->json(['message' => 'Pago procesado', 'total_cobrado' => $pago->monto_total_cobrado]);
     }
 
     /**
-     * ADELANTAR CUOTAS: Resta mensualidades desde la última (final del contrato).
+     * ADELANTAR CUOTAS: Resta desde la última pendiente.
      */
     public function adelantarDesdeElFinal($venta_id)
     {
-        // Buscar la última cuota pendiente (la más lejana en el tiempo)
         $ultimaCuota = PagoVenta::where('venta_id', $venta_id)
             ->where('estado', 'pendiente')
             ->orderBy('numero_pago', 'desc')
             ->first();
 
         if (!$ultimaCuota) {
-            return response()->json(['message' => 'No hay cuotas pendientes para adelantar'], 400);
+            return response()->json(['message' => 'No hay cuotas pendientes'], 400);
         }
 
         $ultimaCuota->update([
-            'estado' => 'pagado',
-            'fecha_pago' => Carbon::now()->toDateString(),
-            'monto_total_cobrado' => $ultimaCuota->monto, // Sin multa por ser adelanto
-            'tipo_pago' => 'adelanto_final',
-            'observaciones' => 'Mensualidad adelantada (Restada del final del contrato)'
+            'estado'              => 'pagado',
+            'fecha_pago'          => Carbon::now()->toDateString(),
+            'monto_total_cobrado' => $ultimaCuota->monto,
+            'tipo_pago'           => 'adelanto_final',
+            'observaciones'       => 'Mensualidad adelantada (Restada del final)'
         ]);
 
-        return response()->json(['message' => "Se ha liquidado la cuota #{$ultimaCuota->numero_pago} (Adelanto)"]);
+        return response()->json(['message' => "Cuota #{$ultimaCuota->numero_pago} liquidada (Adelanto)"]);
     }
 
+    /**
+     * Generar PDF del contrato.
+     */
     public function descargarContrato($id)
     {
-        // Buscamos la venta con sus relaciones cargadas para el PDF
         $venta = Venta::with(['cliente', 'terreno'])->findOrFail($id);
-
-        // Cargamos la vista de blade que diseñamos para el contrato
         $pdf = Pdf::loadView('ventas.contrato', compact('venta'));
-
-        // stream() abre el archivo en el navegador para imprimirlo
         return $pdf->stream('Contrato_Venta_' . $venta->id . '.pdf');
+        }
+        public function getEstadoCuentaApi($cliente_id)
+{
+    // Buscamos la venta activa que tenga pagos pendientes
+    $venta = Venta::where('cliente_id', $cliente_id)
+                  ->where('estado_venta', 'financiado')
+                  ->with(['pagos' => function($q) {
+                      $q->orderBy('numero_pago', 'asc');
+                  }])
+                  ->first();
+
+    if (!$venta) {
+        return response()->json(['success' => false, 'message' => 'No hay deuda activa']);
     }
 
+    return response()->json([
+        'success' => true,
+        'pendiente' => $venta->pagos->where('estado', 'pendiente')->sum('monto'),
+        'monto_cuota' => $venta->monto_mensual,
+        'historial' => $venta->pagos // Esto sirve para llenar la tabla de historial
+    ]);
+}
+public function guardarCobro(Request $request)
+{
+    $request->validate([
+        'cliente_id' => 'required|exists:clientes,id',
+        'mensualidades_a_pagar' => 'required|integer|min:1',
+        'metodo_pago' => 'required|string'
+    ]);
+
+    DB::beginTransaction();
+    try {
+        $caja = Caja::where('estado', 'sistema')->first();
+        if (!$caja) throw new \Exception("Debe abrir caja antes de realizar cobros.");
+
+        // 1. Buscar la venta activa
+        $venta = Venta::where('cliente_id', $request->cliente_id)
+                      ->where('estado_venta', 'financiado')
+                      ->first();
+
+        if (!$venta) throw new \Exception("El cliente no tiene una venta activa.");
+
+        // 2. Obtener las cuotas pendientes más antiguas
+        $pagosPendientes = PagoVenta::where('venta_id', $venta->id)
+                                    ->where('estado', 'pendiente')
+                                    ->orderBy('numero_pago', 'asc')
+                                    ->take($request->mensualidades_a_pagar)
+                                    ->get();
+
+        if ($pagosPendientes->count() < $request->mensualidades_a_pagar) {
+            throw new \Exception("El número de mensualidades a pagar supera las pendientes.");
+        }
+
+        $montoTotalCobro = 0;
+
+        // 3. Procesar cada pago
+        foreach ($pagosPendientes as $pago) {
+            $pago->update([
+                'estado' => 'pagado',
+                'fecha_pago' => now()->toDateString(),
+                'monto_total_cobrado' => $pago->monto,
+                'tipo_pago' => 'normal',
+                'metodo_pago' => $request->metodo_pago
+            ]);
+            $montoTotalCobro += $pago->monto;
+        }
+
+        // 4. Registrar en Movimientos de Caja
+        MovimientoCaja::create([
+            'caja_id' => $caja->id,
+            'user_id' => Auth::id(),
+            'tipo' => 'ingreso',
+            'descripcion' => "ABONO MENSUALIDAD ({$request->mensualidades_a_pagar}) | Venta #{$venta->id} | Cliente: {$request->cliente_id}",
+            'monto' => $montoTotalCobro,
+            'metodo_pago' => ucfirst($request->metodo_pago),
+        ]);
+
+        DB::commit();
+        return response()->json(['success' => true, 'message' => 'Cobro registrado correctamente']);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+    }
+}
 }

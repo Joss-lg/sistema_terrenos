@@ -29,13 +29,12 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Rutas de Login y Logout
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 
 /*
 |--------------------------------------------------------------------------
-| Rutas Protegidas (Requiere Sesión y Middleware de Permisos)
+| Rutas Protegidas (Requiere Sesión)
 |--------------------------------------------------------------------------
 */
 Route::middleware('auth')->group(function () {
@@ -50,7 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // ==========================================================
-    // MÓDULO: EMPLEADOS (Alias: usuarios)
+    // MÓDULO: EMPLEADOS
     // ==========================================================
     Route::get('empleados', [EmpleadoController::class, 'index'])->name('empleados.index')->middleware('permiso:usuarios,mostrar');
     Route::get('empleados/create', [EmpleadoController::class, 'create'])->name('empleados.create')->middleware('permiso:usuarios,alta');
@@ -69,18 +68,8 @@ Route::middleware('auth')->group(function () {
     Route::put('cargos/{cargo}', [CargoController::class, 'update'])->name('cargos.update')->middleware('permiso:cargos,editar');
     Route::delete('cargos/{cargo}', [CargoController::class, 'destroy'])->name('cargos.destroy')->middleware('permiso:cargos,eliminar');
     
-    Route::get('cargos/{cargo}/permisos', [PermisoController::class, 'index'])->name('cargos.permisos.index')->middleware('permiso:cargos,editar');
-    Route::put('cargos/{cargo}/permisos', [PermisoController::class, 'update'])->name('cargos.permisos.update')->middleware('permiso:cargos,editar');
-
-    // ==========================================================
-    // MÓDULO: CATEGORÍAS
-    // ==========================================================
-    Route::get('categorias', [CategoriaController::class, 'index'])->name('categorias.index')->middleware('permiso:categorias,mostrar');
-    Route::get('categorias/create', [CategoriaController::class, 'create'])->name('categorias.create')->middleware('permiso:categorias,alta');
-    Route::post('categorias', [CategoriaController::class, 'store'])->name('categorias.store')->middleware('permiso:categorias,alta');
-    Route::get('categorias/{categoria}/edit', [CategoriaController::class, 'edit'])->name('categorias.edit')->middleware('permiso:categorias,editar');
-    Route::put('categorias/{categoria}', [CategoriaController::class, 'update'])->name('categorias.update')->middleware('permiso:categorias,editar');
-    Route::delete('categorias/{categoria}', [CategoriaController::class, 'destroy'])->name('categorias.destroy')->middleware('permiso:categorias,eliminar');
+    Route::get('cargos/{cargo}/permisos', [PermisoController::class, 'index'])->name('cargos.permisos.index');
+    Route::put('cargos/{cargo}/permisos', [PermisoController::class, 'update'])->name('cargos.permisos.update');
 
     // ==========================================================
     // MÓDULO: INVENTARIO (TERRENOS)
@@ -91,7 +80,6 @@ Route::middleware('auth')->group(function () {
     Route::get('inventario/{terreno}/edit', [InventarioController::class, 'edit'])->whereNumber('terreno')->name('inventario.edit')->middleware('permiso:inventario,editar');
     Route::put('inventario/{terreno}', [InventarioController::class, 'update'])->whereNumber('terreno')->name('inventario.update')->middleware('permiso:inventario,editar');
     Route::delete('inventario/{terreno}', [InventarioController::class, 'destroy'])->whereNumber('terreno')->name('inventario.destroy')->middleware('permiso:inventario,eliminar');
-    Route::post('/inventario/{id}/asignar-cliente', [InventarioController::class, 'asignarCliente'])->name('inventario.asignarCliente');
 
     // ==========================================================
     // MÓDULO: CLIENTES
@@ -107,25 +95,38 @@ Route::middleware('auth')->group(function () {
     // MÓDULO: GESTIÓN DE CAJA
     // ==========================================================
     Route::get('cajas', [CajaController::class, 'index'])->name('cajas.index')->middleware('permiso:cajas,mostrar');
-    Route::post('cajas/movimiento', [CajaController::class, 'registrarMovimiento'])->name('cajas.movimiento')->middleware('permiso:cajas,editar');
-    Route::post('cajas/cobro', [CajaController::class, 'registrarCobro'])->name('cajas.cobro')->middleware('permiso:cajas,editar');
+    Route::post('cajas/movimiento', [CajaController::class, 'registrarMovimiento'])->name('cajas.movimiento');
+    Route::post('cajas/cobro', [CajaController::class, 'registrarCobro'])->name('cajas.cobro');
 
     // ==========================================================
-    // MÓDULO: PUNTO DE VENTA (TPV) Y VENTAS
+    // MÓDULO: VENTAS Y COBRANZA
     // ==========================================================
+    // Vista principal TPV
     Route::get('tpv', [VentaController::class, 'tpv'])->name('ventas.tpv')->middleware('permiso:ventas,mostrar');
-    Route::post('ventas/store', [VentaController::class, 'store'])->name('ventas.store')->middleware('permiso:ventas,alta');
-    Route::get('ventas/ticket/{venta}', [VentaController::class, 'generarTicketPDF'])->name('ventas.ticket')->middleware('permiso:ventas,mostrar');
     
-    // Contratos
-    Route::get('ventas/contrato/{venta}', [VentaController::class, 'contratoPDF'])->name('ventas.contrato')->middleware('permiso:ventas,mostrar');
-    Route::get('ventas/descargar-contrato/{id}', [VentaController::class, 'descargarContrato'])->name('ventas.descargarContrato');
+    // Guardar venta inicial
+    Route::post('ventas/store', [VentaController::class, 'store'])->name('ventas.store')->middleware('permiso:ventas,alta');
+
+    // --- RUTAS DE COBRANZA (API Y PROCESO) ---
+    // Esta ruta es la que faltaba para cargar la deuda en el módulo de cobros
+    Route::get('api/ventas/estado-cuenta/{cliente_id}', [VentaController::class, 'getEstadoCuentaApi'])->name('ventas.estado_cuenta');
+    
+    // Esta ruta es la que procesa el botón de cobro y evita el error de "Route not defined"
+    Route::post('ventas/guardar-cobro', [VentaController::class, 'guardarCobro'])->name('ventas.guardar_cobro');
+
+    // --- OTRAS RUTAS API ---
+    Route::get('api/clientes/{id}', [VentaController::class, 'getClienteApi'])->name('api.cliente');
+    Route::get('api/terrenos/categoria/{categoria}', [VentaController::class, 'getTerrenosPorCategoria'])->name('api.terrenos_cat');
+
+    // Documentos y Adelantos
+    Route::get('ventas/contrato/{venta}', [VentaController::class, 'descargarContrato'])->name('ventas.contrato');
+    Route::post('ventas/adelantar/{venta_id}', [VentaController::class, 'adelantarDesdeElFinal'])->name('ventas.adelantar');
 
     // ==========================================================
-    // OTROS MÓDULOS (PRODUCTOS, PROVEEDORES, COMPRAS)
+    // OTROS MÓDULOS
     // ==========================================================
-    Route::resource('productos', ProductoController::class)->middleware('auth');
-    Route::resource('proveedores', ProveedorController::class)->middleware('auth');
-    Route::resource('compras', CompraController::class)->middleware('auth');
-
+    Route::resource('categorias', CategoriaController::class);
+    Route::resource('productos', ProductoController::class);
+    Route::resource('proveedores', ProveedorController::class);
+    Route::resource('compras', CompraController::class);
 });
