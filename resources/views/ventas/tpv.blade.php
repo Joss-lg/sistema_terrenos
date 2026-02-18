@@ -17,6 +17,8 @@
     .cliente-resumen-card { background: #f1f5f9; border-left: 5px solid #0ea5e9; padding: 15px; border-radius: 8px; margin-top: 10px; }
     .mensualidad-row { border-bottom: 1px solid #e2e8f0 !important; transition: background 0.2s; cursor: pointer; }
     .mensualidad-row:has(input:checked) { background-color: rgba(14, 165, 233, 0.1); border-left: 4px solid #0ea5e9 !important; }
+    /* Estilo para el badge de categoría */
+    .badge-category { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; margin-top: 5px; display: inline-block; }
 </style>
 
 <div class="tpv-container">
@@ -71,7 +73,12 @@
                     <div class="row g-2 overflow-auto" id="product-list" style="max-height: 280px;">
                         @foreach ($terrenos as $t)
                             <div class="col-6 mb-2 terrain-item" data-cat="{{ strtoupper($t->categoria ?? 'BASICO') }}">
-                                <div class="card product-card" data-id="{{ $t->id }}" data-price="{{ $t->precio_total }}" data-name="{{ $t->nombre }}">
+                                {{-- SE CORRIGIÓ: Se agregó data-categoria --}}
+                                <div class="card product-card" 
+                                     data-id="{{ $t->id }}" 
+                                     data-price="{{ $t->precio_total }}" 
+                                     data-name="{{ $t->nombre }}"
+                                     data-categoria="{{ strtoupper($t->categoria ?? 'BASICO') }}">
                                     <div class="card-body p-2 text-center">
                                         <small class="text-highlight d-block fw-bold" style="font-size: 0.65rem;">{{ strtoupper($t->categoria ?? 'BASICO') }}</small>
                                         <i class="fas fa-mountain text-info mb-1"></i>
@@ -91,7 +98,9 @@
                     <label class="label-accent mb-2">3. PLAN DE PAGO Y FINANCIAMIENTO</label>
                     <div class="mb-3 bg-light p-2 rounded">
                         <label class="small">Lote Seleccionado:</label>
-                        <h6 id="lote-seleccionado-nombre" class="fw-bold text-primary">Ninguno</h6>
+                        <h6 id="lote-seleccionado-nombre" class="fw-bold text-primary mb-0">Ninguno</h6>
+                        {{-- SE CORRIGIÓ: Contenedor para la categoría --}}
+                        <span id="lote-seleccionado-categoria" class="badge-category" style="display:none;"></span>
                         <input type="hidden" id="terreno_id_input">
                     </div>
                     
@@ -178,13 +187,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // 3. Selección de Terreno
+    // 3. Selección de Terreno (SE CORRIGIÓ: Lógica para mostrar tipo/categoría)
     document.querySelectorAll('.product-card').forEach(card => {
         card.addEventListener('click', () => {
             precioTerreno = parseFloat(card.dataset.price);
             terrenoSeleccionadoId = card.dataset.id;
+            const categoria = card.dataset.categoria;
             
+            // Mostrar Nombre
             document.getElementById('lote-seleccionado-nombre').textContent = card.dataset.name;
+            
+            // Mostrar y Estilizar Categoría
+            const labelCat = document.getElementById('lote-seleccionado-categoria');
+            labelCat.textContent = categoria;
+            labelCat.style.display = 'inline-block';
+            
+            // Colores dinámicos según categoría
+            if(categoria === 'PREMIUM') {
+                labelCat.style.backgroundColor = '#fbbf24'; // Dorado
+                labelCat.style.color = '#000';
+            } else if(categoria === 'MEDIO') {
+                labelCat.style.backgroundColor = '#0ea5e9'; // Azul
+                labelCat.style.color = '#fff';
+            } else {
+                labelCat.style.backgroundColor = '#94a3b8'; // Gris (Básico)
+                labelCat.style.color = '#fff';
+            }
+
             document.getElementById('total-display').textContent = `$${precioTerreno.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
             document.getElementById('terreno_id_input').value = terrenoSeleccionadoId;
             
@@ -248,7 +277,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if(p.style.display === 'block') recalcularYProyectar();
     });
 
-    // 6. Registro de Venta con Apertura de Contrato
+    // 6. Registro de Venta
     document.getElementById('process-payment').addEventListener('click', async function() {
         const radio = document.querySelector('input[name="mensualidades"]:checked');
         const payload = {
@@ -272,11 +301,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if(data.success) {
                 alert('✅ Venta registrada con éxito');
-                
-                // Abrir contrato en pestaña nueva
                 window.open("{{ url('ventas/contrato') }}/" + data.venta_id, '_blank');
-                
-                // Recargar para limpiar formulario
                 window.location.reload();
             } else {
                 alert('❌ Error: ' + (data.message || 'No se pudo procesar'));

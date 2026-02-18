@@ -129,4 +129,14 @@ Route::middleware('auth')->group(function () {
     Route::resource('productos', ProductoController::class);
     Route::resource('proveedores', ProveedorController::class);
     Route::resource('compras', CompraController::class);
-});
+
+    // Ruta para guardar el cobro en la base de datos
+    Route::post('/cajas/registrar-cobro', [CajaController::class, 'registrarCobro'])->name('cajas.registrarCobro');
+
+    // Ruta para generar y mostrar el PDF del ticket
+    Route::get('/cajas/descargar-ticket', [CajaController::class, 'descargarTicket'])->name('cajas.descargarTicket');
+
+// Ruta para obtener el historial de pagos de un cliente específico
+// Debe coincidir con el fetch que pusimos: /cajas/historial/{id}
+Route::get('/cajas/historial/{id}', [App\Http\Controllers\CajaController::class, 'obtenerHistorial'])->name('cajas.historial');
+    });

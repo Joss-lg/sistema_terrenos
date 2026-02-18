@@ -5,142 +5,177 @@ namespace App\Http\Controllers;
 use App\Models\Caja;
 use App\Models\MovimientoCaja;
 use App\Models\Cliente;
-use App\Models\Compra;
+use App\Models\Compra; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class CajaController extends Controller
 {
     /**
-     * Muestra la pantalla de cobros y movimientos.
+     * Muestra la pantalla principal de cobros.
      */
     public function index()
     {
-
-        // Clientes para selector 
-
-        // ✅ CORRECCIÓN: Cargamos TODOS los clientes para que el selector funcione 
-        // aunque no tengan compras registradas aún.
-
+        // Traemos los clientes con sus datos
         $clientes = Cliente::orderBy('cliente', 'asc')->get();
 
+        // Traemos los movimientos recientes (Generales)
         $movimientos = MovimientoCaja::with('user')
             ->orderBy('created_at', 'desc')
-            ->take(30)
+            ->take(10)
             ->get();
 
-        // ✅ Aseguramos que la caja de sistema exista al cargar la vista
+        // Aseguramos que la caja esté abierta
         $this->cajaSistemaId();
 
         return view('cajas.index', compact('clientes', 'movimientos'));
     }
 
     /**
-     * Obtiene o crea la caja única del sistema (Estado: sistema).
+     * NUEVO: Obtiene el historial de pagos de un cliente específico vía AJAX
      */
-    private function cajaSistemaId(): int
-    {
-        $caja = Caja::firstOrCreate(
-            ['estado' => 'sistema'],
-            [
-                'user_id' => Auth::id() ?? 1, 
-                'fecha_hora_apertura' => now(),
-                'saldo_inicial' => 0,
-            ]
-        );
-
-        return (int) $caja->id;
+    public function obtenerHistorial($id)
+{
+    // Si el ID llega vacío, retornamos array vacío
+    if (!$id) {
+        return response()->json([]);
     }
 
+    // Buscamos en la descripción el texto: "Cliente: {id}"
+    // IMPORTANTE: Respetamos los espacios que se ven en tu base de datos
+    $historial = MovimientoCaja::where('descripcion', 'LIKE', "%Cliente: $id") // Caso final de línea
+        ->orWhere('descripcion', 'LIKE', "%Cliente: $id %") // Caso con espacio extra
+        ->orWhere('descripcion', 'LIKE', "%Cliente: $id|%") // Caso con separador
+        ->orderBy('created_at', 'desc')
+        ->take(20)
+        ->get()
+        ->map(function($item) {
+            return [
+                'fecha_pago' => $item->created_at->format('d/m/Y H:i'),
+                'concepto'   => $item->descripcion, 
+                'monto'      => $item->monto,
+                'metodo'     => $item->metodo_pago
+            ];
+        });
+
+    return response()->json($historial);
+}
     /**
-     * Registrar un cobro de mensualidad.
+     * Registro de Cobro con Lógica de Inmobiliaria
      */
     public function registrarCobro(Request $request)
     {
+        // Ajustamos la validación para que no falle si no envías fecha_vencimiento (la calculamos si falta)
         $request->validate([
-            'cliente_id'        => 'required|exists:clientes,id',
-            'mensualidad'       => 'required|numeric|min:1',
-            'mensualidades'     => 'required|integer|min:1',
-            'fecha_vencimiento' => 'required|date',
-            'fecha_pago'        => 'required|date',
-            'tipo'              => 'required|in:normal,adelanto,liquidacion',
-            'metodo_pago'       => 'required|in:efectivo,transferencia',
-            'notas'             => 'nullable|string|max:255',
+            'cliente_id'     => 'required|exists:clientes,idCli',
+            'mensualidad'    => 'required|numeric', 
+            'monto_recibido' => 'required|numeric|min:1',       
+            'metodo_pago'    => 'required|in:efectivo,transferencia',
         ]);
 
         $cliente = Cliente::find($request->cliente_id);
         
-        // Buscamos la compra (deuda) activa de este cliente
-        $compra = Compra::where('cliente_id', $cliente->id)
+        // Buscamos la compra activa (terreno) de este cliente
+        $compra = Compra::where('cliente_id', $cliente->idCli)
                         ->where('saldo', '>', 0)
                         ->latest()
                         ->first();
 
         if (!$compra) {
-            return redirect()->back()->with('error', 'Este cliente no tiene deudas activas registradas en la tabla compras.');
+            return response()->json(['error' => 'Este cliente no tiene deudas activas.'], 422);
         }
 
+        $cuotaPactada = (float)$request->mensualidad;
+        $montoEntregado = (float)$request->monto_recibido;
         $saldoAnterior = (float)$compra->saldo;
-        $subtotal      = (float)$request->mensualidad * (int)$request->mensualidades;
 
-        // Cálculo de multa (10% si se pasó de la fecha)
-        $fechaPago = Carbon::parse($request->fecha_pago);
-        $fechaVenc = Carbon::parse($request->fecha_vencimiento);
-        $multa     = $fechaPago->gt($fechaVenc) ? round($subtotal * 0.10, 2) : 0;
+        // Lógica de Multa: Si hoy es después del día 5
+        $diaHoy = now()->day;
+        $multa = ($diaHoy > 5) ? round($cuotaPactada * 0.10, 2) : 0;
 
-        $total      = $subtotal + $multa;
-        $saldoNuevo = max($saldoAnterior - $subtotal, 0);
+        // El abono real a la deuda es lo que entregó menos la multa
+        $pagoEfectivoADeuda = $montoEntregado - $multa;
+        $saldoNuevo = max($saldoAnterior - $pagoEfectivoADeuda, 0);
 
         DB::beginTransaction();
         try {
-            // Registrar el ingreso en la caja de sistema
-            MovimientoCaja::create([
+            // 1. Registrar el movimiento en caja
+            $movimiento = MovimientoCaja::create([
                 'caja_id'     => $this->cajaSistemaId(),
-                'user_id'     => Auth::id(),
+                'user_id'     => Auth::id() ?? 1,
                 'tipo'        => 'ingreso',
-                'monto'       => $total,
+                'monto'       => $montoEntregado,
                 'metodo_pago' => ucfirst($request->metodo_pago),
-                'descripcion' => "COBRO MENSUALIDAD | Cliente: {$cliente->cliente} | Meses: {$request->mensualidades} | Saldo Restante: $" . number_format($saldoNuevo, 2) . ($multa > 0 ? " | Incluye Multa: $$multa" : ""),
+                'descripcion' => "COBRO INMOBILIARIA | Cliente: {$cliente->cliente} (ID: {$cliente->idCli}) | " . 
+                                 "Multa: $$multa | Saldo Nuevo: $" . number_format($saldoNuevo, 2),
             ]);
 
-            // Actualizar la deuda en la tabla compras
+            // 2. Actualizar el saldo en la tabla Compra
             $compra->saldo = $saldoNuevo;
-            if (!is_null($compra->mensualidades)) {
-                $compra->mensualidades = max((int)$compra->mensualidades - (int)$request->mensualidades, 0);
-            }
             $compra->save();
 
             DB::commit();
-            return redirect()->route('cajas.index')->with('success', "Cobro registrado. Saldo actual: $" . number_format($saldoNuevo, 2));
+            
+            // Retornamos JSON porque el JS usa Fetch
+            return response()->json([
+                'res' => true,
+                'message' => "Cobro registrado con éxito.",
+                'abrir_ticket' => true,
+                'datos_ticket' => [
+                    'cliente_id' => $cliente->idCli,
+                    'total' => $montoEntregado,
+                    'multa' => $multa,
+                    'saldo_restante' => $saldoNuevo,
+                    'subtotal' => $pagoEfectivoADeuda
+                ]
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Error en el cobro: ' . $e->getMessage());
+            return response()->json(['error' => 'Error: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * Movimientos manuales (Entradas/Salidas varias).
+     * Generar el PDF del ticket
      */
-    public function registrarMovimiento(Request $request)
+    public function descargarTicket(Request $request) 
     {
-        $request->validate([
-            'tipo'        => 'required|in:ingreso,egreso',
-            'monto'       => 'required|numeric|min:0.01',
-            'descripcion' => 'required|string|max:255',
-        ]);
+        $cliente = Cliente::find($request->cliente_id);
+        
+        $data = [
+            'cliente'        => $cliente,
+            'meses'          => $request->meses ?? 1,
+            'subtotal'       => $request->subtotal,
+            'multa'          => $request->multa,
+            'total'          => $request->total,
+            'metodo'         => $request->metodo,
+            'saldo_restante' => $request->saldo_restante,
+            'fecha'          => now()->format('d/m/Y H:i'),
+        ];
 
-        MovimientoCaja::create([
-            'caja_id'     => $this->cajaSistemaId(),
-            'user_id'     => Auth::id(),
-            'tipo'        => $request->tipo,
-            'descripcion' => $request->descripcion,
-            'monto'       => $request->monto,
-            'metodo_pago' => 'Manual',
-        ]);
+        $pdf = Pdf::loadView('cajas.ticket', $data);
+        // Formato térmico (80mm aprox)
+        $pdf->setPaper([0, 0, 226.77, 600], 'portrait');
 
-        return redirect()->route('cajas.index')->with('success', 'Movimiento registrado exitosamente.');
+        return $pdf->stream('ticket_' . ($cliente->cliente ?? 'pago') . '.pdf');
+    }
+
+    private function cajaSistemaId(): int
+    {
+        $caja = Caja::where('estado', 'sistema')->first();
+        
+        if (!$caja) {
+            $caja = Caja::create([
+                'estado' => 'sistema',
+                'user_id' => Auth::id() ?? 1, 
+                'fecha_hora_apertura' => now(),
+                'saldo_inicial' => 0,
+            ]);
+        }
+        return (int) $caja->id;
     }
 }
