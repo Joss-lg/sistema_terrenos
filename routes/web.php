@@ -15,6 +15,7 @@ use App\Http\Controllers\CajaController;
 use App\Http\Controllers\ProveedorController;
 use App\Http\Controllers\CompraController;
 use App\Http\Controllers\VentaController;
+use App\Http\Controllers\HistorialPagoController;
 
 /*
 |--------------------------------------------------------------------------
@@ -121,7 +122,7 @@ Route::middleware('auth')->group(function () {
     // Documentos y Adelantos
     Route::get('ventas/contrato/{venta}', [VentaController::class, 'descargarContrato'])->name('ventas.contrato');
     Route::post('ventas/adelantar/{venta_id}', [VentaController::class, 'adelantarDesdeElFinal'])->name('ventas.adelantar');
-
+    Route::get('/cajas/ticket/{id_pago}', [App\Http\Controllers\VentaController::class, 'generarTicket'])->name('cajas.ticket');
     // ==========================================================
     // OTROS MÓDULOS
     // ==========================================================
@@ -129,4 +130,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('productos', ProductoController::class);
     Route::resource('proveedores', ProveedorController::class);
     Route::resource('compras', CompraController::class);
+    
+
+// Ruta para ver la tabla del historial
+    Route::get('/historial-pagos', [HistorialPagoController::class, 'index'])->name('historial.index');
+
+// Ruta para la "Acción" de imprimir el PDF (por ahora la dejamos preparada)
+    Route::get('/historial-pagos/{id}/pdf', [HistorialPagoController::class, 'imprimirPdf'])->name('historial.pdf');
+    Route::get('/historial-pagos/{id}/pdf', [HistorialPagoController::class, 'imprimirPdf'])->name('historial.pdf');
 });

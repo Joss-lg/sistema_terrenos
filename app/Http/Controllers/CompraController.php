@@ -2,88 +2,100 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Compra;
-use App\Models\Proveedor;
+use App\Models\Pago;      // CAMBIO: Importamos el modelo Pago
+use App\Models\Cliente;   // CAMBIO: Importamos el modelo Cliente
 use Illuminate\Http\Request;
 
-class CompraController extends Controller
+class PagoController extends Controller // CAMBIO: Renombramos la clase
 {
     /**
-     * Muestra una lista de todos los registros de compras.
+     * Muestra una lista de todos los registros de pagos.
      */
     public function index()
     {
-        $compras = Compra::with('proveedor')->orderBy('created_at', 'desc')->get();
-        // El middleware 'permiso:compras,mostrar' ya protege esta ruta
-        return view('compras.index', compact('compras'));
+        // CAMBIO: Traemos los pagos con su respectivo cliente
+        $pagos = Pago::with('cliente')->orderBy('created_at', 'desc')->get();
+        // El middleware 'permiso:pagos,mostrar' protegería esta ruta
+        return view('pagos.index', compact('pagos'));
     }
 
     /**
-     * Muestra el formulario para crear un nuevo registro de compra.
+     * Muestra el formulario para crear un nuevo registro de pago.
      */
     public function create()
     {
-        $proveedores = Proveedor::all();
-        return view('compras.create', compact('proveedores'));
+        // CAMBIO: Obtenemos todos los clientes
+        $clientes = Cliente::all();
+        return view('pagos.create', compact('clientes')); // o la vista donde tengas tu formulario
     }
 
     /**
-     * Almacena un nuevo registro de compra.
+     * Almacena un nuevo registro de pago.
      */
     public function store(Request $request)
     {
-        // El middleware 'permiso:compras,alta' ya protege esta función
+        // El middleware 'permiso:pagos,alta' protegería esta función
         $request->validate([
-            'proveedor_id' => 'required|exists:proveedores,id',
+            'cliente_id' => 'required|exists:clientes,id', // CAMBIO: Validamos contra la tabla clientes
             'descripcion' => 'nullable|string|max:255',
             'metodo_pago' => 'required|string|in:efectivo,tarjeta,credito,transferencia',
             'total' => 'required|numeric|min:0.01',
         ]);
 
-        Compra::create($request->all());
+        Pago::create($request->all());
 
-        // NOTA: Aquí iría la lógica para AUMENTAR el stock en el inventario.
-        // Lo implementaremos en un paso posterior si se necesita detalle de compra.
-
-        return redirect()->route('compras.index')->with('success', 'Registro de compra completado exitosamente.');
+        return redirect()->route('pagos.index')->with('success', 'Registro de pago completado exitosamente.');
     }
 
     /**
-     * Muestra el formulario para editar un registro de compra.
+     * Muestra el formulario para editar un registro de pago.
      */
-    public function edit(Compra $compra)
+    public function edit(Pago $pago) // CAMBIO: Inyectamos el modelo Pago
     {
-        $proveedores = Proveedor::all();
-        return view('compras.edit', compact('compra', 'proveedores'));
+        $clientes = Cliente::all();
+        return view('pagos.edit', compact('pago', 'clientes'));
     }
 
     /**
-     * Actualiza un registro de compra.
+     * Actualiza un registro de pago.
      */
-    public function update(Request $request, Compra $compra)
+    public function update(Request $request, Pago $pago)
     {
-        // El middleware 'permiso:compras,editar' ya protege esta función
+        // El middleware 'permiso:pagos,editar' protegería esta función
         $request->validate([
-            'proveedor_id' => 'required|exists:proveedores,id',
+            'cliente_id' => 'required|exists:clientes,id', // CAMBIO: Validamos el cliente
             'descripcion' => 'nullable|string|max:255',
             'metodo_pago' => 'required|string|in:efectivo,tarjeta,credito,transferencia',
             'total' => 'required|numeric|min:0.01',
         ]);
 
-        $compra->update($request->all());
+        $pago->update($request->all());
 
-        return redirect()->route('compras.index')->with('success', 'Registro de compra actualizado exitosamente.');
+        return redirect()->route('pagos.index')->with('success', 'Registro de pago actualizado exitosamente.');
     }
 
     /**
-     * Elimina un registro de compra.
+     * Elimina un registro de pago.
      */
-    public function destroy(Compra $compra)
+    public function destroy(Pago $pago)
     {
-        // El middleware 'permiso:compras,eliminar' ya protege esta función
-        // NOTA: La lógica para AJUSTAR el stock tras la eliminación iría aquí.
+        // El middleware 'permiso:pagos,eliminar' protegería esta función
+        $pago->delete();
+        return redirect()->route('pagos.index')->with('success', 'Registro de pago eliminado exitosamente.');
+    }
+
+    /**
+     * NUEVO: Genera o muestra el documento con el historial completo de un cliente
+     */
+    public function generarDocumentoHistorial($cliente_id)
+    {
+        // Buscamos al cliente y cargamos todos los pagos que ha realizado
+        $cliente = Cliente::with('pagos')->findOrFail($cliente_id);
         
-        $compra->delete();
-        return redirect()->route('compras.index')->with('success', 'Registro de compra eliminado exitosamente.');
+        // Calculamos cuánto ha pagado en total
+        $totalPagado = $cliente->pagos->sum('total');
+
+        // Retornamos la vista que servirá como diseño del documento (PDF o impresión)
+        return view('pagos.documento', compact('cliente', 'totalPagado'));
     }
 }

@@ -5,59 +5,55 @@
     {{-- Card centrado --}}
     <div class="card shadow-sm border-0 mx-auto" style="max-width: 600px;">
         
-        {{-- CAMBIO: Cabecera oscura y h4 para el título --}}
+        {{-- Cabecera oscura y h4 para el título --}}
         <div class="card-header bg-dark text-white border-0">
-            <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i> Registrar Nueva Compra</h4>
+            <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i> Registrar Nuevo Pago</h4>
         </div>
 
-        {{-- CAMBIO: card-body con p-4 y sin alerta de sesión --}}
+        {{-- card-body con p-4 y sin alerta de sesión --}}
         <div class="card-body p-4">
 
-            <form action="{{ route('compras.store') }}" method="POST">
+            <form action="{{ route('pagos.store') }}" method="POST">
                 @csrf
 
-                {{-- CAMBIO: Sección añadida --}}
-                <h6 class="text-muted">Detalles de la Compra</h6>
+                <h6 class="text-muted">Detalles del Pago</h6>
                 <hr class="mt-1 mb-3 border-secondary">
 
-                {{-- Proveedor --}}
+                {{-- Cliente --}}
                 <div class="mb-3">
-                    <label for="proveedor_id" class="form-label">Proveedor</label>
-                    {{-- CAMBIO: Input group con ícono --}}
+                    <label for="cliente_id" class="form-label">Cliente</label>
                     <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-truck fa-fw"></i></span>
-                        <select class="form-select @error('proveedor_id') is-invalid @enderror" id="proveedor_id" name="proveedor_id" required>
-                            <option value="">Seleccione un Proveedor</option>
-                            @foreach ($proveedores as $proveedor)
-                                <option value="{{ $proveedor->id }}" {{ old('proveedor_id') == $proveedor->id ? 'selected' : '' }}>
-                                    {{ $proveedor->nombre }} ({{ $proveedor->empresa }})
+                        <span class="input-group-text"><i class="fas fa-user fa-fw"></i></span>
+                        <select class="form-select @error('cliente_id') is-invalid @enderror" id="cliente_id" name="cliente_id" required>
+                            <option value="">Seleccione un Cliente</option>
+                            @foreach ($clientes as $cliente)
+                                <option value="{{ $cliente->id }}" {{ old('cliente_id') == $cliente->id ? 'selected' : '' }}>
+                                    {{ $cliente->nombre }} {{-- Muestra el nombre del cliente --}}
                                 </option>
                             @endforeach
                         </select>
                     </div>
-                    @error('proveedor_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
+                    @error('cliente_id') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
                 
-                {{-- Total --}}
+                {{-- Total del Pago --}}
                 <div class="mb-3">
-                    <label for="total" class="form-label">Total de la Compra</label>
+                    <label for="total" class="form-label">Monto del Pago</label>
                     <div class="input-group">
                         <span class="input-group-text">$</span>
                         <input type="number" step="0.01" min="0.01" class="form-control @error('total') is-invalid @enderror" id="total" name="total" value="{{ old('total') }}" required>
                     </div>
-                    {{-- CAMBIO: Error movido fuera del input-group --}}
                     @error('total') <div class="invalid-feedback d-block">{{ $message }}</div> @enderror
                 </div>
 
                 {{-- Método de Pago --}}
                 <div class="mb-3">
                     <label for="metodo_pago" class="form-label">Método de Pago</label>
-                    {{-- CAMBIO: Input group con ícono --}}
                     <div class="input-group">
                         <span class="input-group-text"><i class="fas fa-credit-card fa-fw"></i></span>
                         <select class="form-select @error('metodo_pago') is-invalid @enderror" id="metodo_pago" name="metodo_pago" required>
                             <option value="">Seleccione...</option>
-                            @foreach (['efectivo', 'tarjeta'] as $metodo)
+                            @foreach (['efectivo', 'tarjeta', 'transferencia'] as $metodo)
                                 <option value="{{ $metodo }}" {{ old('metodo_pago') == $metodo ? 'selected' : '' }}>
                                     {{ ucfirst($metodo) }}
                                 </option>
@@ -69,24 +65,22 @@
 
                 {{-- Descripción --}}
                 <div class="mb-3">
-                    <label for="descripcion" class="form-label">Descripción o Concepto (Opcional)</label>
+                    <label for="descripcion" class="form-label">Descripción o Lote (Opcional)</label>
                     <textarea class="form-control @error('descripcion') is-invalid @enderror" id="descripcion" name="descripcion" rows="3">{{ old('descripcion') }}</textarea>
                     @error('descripcion') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
                 
                 <div class="d-flex justify-content-between mt-4">
-                    <a href="{{ route('compras.index') }}" class="btn btn-secondary">
-                        {{-- CAMBIO: Ícono añadido --}}
+                    <a href="{{ route('pagos.index') }}" class="btn btn-secondary">
                         <i class="fas fa-times me-1"></i> Cancelar
                     </a>
                     
-                    @if (Auth::user()->hasPermissionTo('compras', 'alta'))
+                    @if (Auth::user()->hasPermissionTo('pagos', 'alta'))
                         <button type="submit" class="btn btn-success">
-                            {{-- CAMBIO: Ícono estandarizado --}}
-                            <i class="fas fa-save me-1"></i> Guardar Compra
+                            <i class="fas fa-save me-1"></i> Guardar Pago
                         </button>
                     @else
-                        <span class="text-danger">No tienes permiso para registrar compras.</span>
+                        <span class="text-danger">No tienes permiso para registrar pagos.</span>
                     @endif
                 </div>
             </form>

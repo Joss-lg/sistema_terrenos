@@ -5,22 +5,23 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Compra extends Model
+class Pago extends Model
 {
     use HasFactory;
 
-    protected $table = 'compras';
+    // Actualizamos el nombre de la tabla
+    protected $table = 'pagos';
 
     protected $fillable = [
-        'proveedor_id',
+        'cliente_id', // CAMBIO: Ahora recibe el ID del cliente
         'descripcion',
         'metodo_pago',
         'total',
     ];
     
-    // Una compra pertenece a un proveedor
-    public function proveedor()
+    // CAMBIO: Un pago pertenece a un cliente
+    public function cliente()
     {
-        return $this->belongsTo(Proveedor::class, 'proveedor_id');
+        return $this->belongsTo(Cliente::class, 'cliente_id');
     }
 }

@@ -1,19 +1,14 @@
 @extends('layouts.app')
 
 @section('content')
-{{-- Estilo para forzar la visibilidad del texto en el select --}}
-<style>
-    #cliente_id option {
-        color: #000000 !important;
-        background-color: #ffffff !important;
-    }
-</style>
-
-<div class="container-fluid" style="max-width: 1200px; padding: 20px;">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="mb-0 fw-bold text-dark"><i class="fas fa-hand-holding-usd me-2"></i>Módulo de Cobranza</h2>
-        <span class="badge bg-success px-3 py-2">Caja Activa: ${{ number_format($cajaAbierta->saldo_actual ?? 0, 2) }}</span>
+<div class="card border-0 shadow-sm mb-4" style="background: #0f172a; border-radius: 12px;">
+    <div class="card-body p-4">
+        <small class="text-uppercase fw-bold" style="color: #94a3b8; letter-spacing: 1px; font-size: 0.75rem;">
+            INMOBILIARIA • COBRANZA
+        </small>
+        <h2 class="text-white fw-bold mb-0 mt-1">Módulo de Cobranza</h2>
     </div>
+</div>
 
     <div class="row g-4">
         {{-- PANEL DE COBRO DINÁMICO --}}
@@ -26,7 +21,6 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <label class="form-label fw-bold">1. Seleccionar Cliente</label>
-                        {{-- Se corrigió el loop para mostrar el nombre correctamente --}}
                         <select id="cliente_id" class="form-select select2" required style="color: #000 !important;">
                             <option value="">-- Buscar Cliente --</option>
                             @foreach($clientes as $c)
@@ -70,9 +64,14 @@
                         </div>
                     </div>
 
-                    <button id="btn-procesar-cobro" class="btn btn-success btn-lg w-100 shadow-sm" disabled>
-                        <i class="fas fa-check-circle me-1"></i> PROCESAR COBRO
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button id="btn-procesar-cobro" class="btn btn-success btn-lg w-100 shadow-sm" disabled>
+                            <i class="fas fa-check-circle me-1"></i> COBRAR
+                        </button>
+                        <button id="btn-liquidar-cuenta" class="btn btn-warning btn-lg w-100 shadow-sm text-dark fw-bold" disabled>
+                            <i class="fas fa-star me-1"></i> LIQUIDAR
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -105,24 +104,7 @@
                 </div>
             </div>
 
-            {{-- MOVIMIENTOS RECIENTES DE CAJA --}}
-            <div class="card shadow border-0">
-                <div class="card-header bg-secondary text-white small fw-bold">ÚLTIMOS MOVIMIENTOS DE CAJA</div>
-                <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
-                    @foreach($movimientos as $m)
-                        <div class="list-group-item d-flex justify-content-between align-items-center">
-                            <div>
-                                <small class="d-block fw-bold text-dark">{{ $m->descripcion }}</small>
-                                <small class="text-muted">{{ $m->created_at->format('d/m/Y H:i') }} · {{ $m->metodo_pago }}</small>
-                            </div>
-                            <span class="fw-bold {{ $m->tipo == 'ingreso' ? 'text-success' : 'text-danger' }}">
-                                {{ $m->tipo == 'ingreso' ? '+' : '-' }}${{ number_format($m->monto, 2) }}
-                            </span>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
+           
     </div>
 </div>
 
@@ -131,12 +113,13 @@ document.addEventListener('DOMContentLoaded', function() {
     let clienteId = null;
     let montoMensual = 0;
     let deudaTotal = 0;
+    let pagosPendientesGlobal = [];
 
     const selectCliente = document.getElementById('cliente_id');
     const inputCant = document.getElementById('input-cantidad');
     const btnCobrar = document.getElementById('btn-procesar-cobro');
+    const btnLiquidar = document.getElementById('btn-liquidar-cuenta');
 
-    // 1. Cargar Estado de Cuenta al seleccionar cliente
     selectCliente.addEventListener('change', async function() {
         clienteId = this.value;
         if (!clienteId) {
@@ -151,6 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 montoMensual = data.monto_cuota;
                 deudaTotal = data.pendiente;
+                pagosPendientesGlobal = data.historial.filter(p => p.estado === 'pendiente');
                 
                 document.getElementById('info-deuda').style.display = 'block';
                 document.getElementById('lblMontoCuota').textContent = `$${montoMensual.toLocaleString()}`;
@@ -158,7 +142,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 actualizarTabla(data.historial);
                 recalcularTotal();
+                
                 btnCobrar.disabled = false;
+                btnLiquidar.disabled = (pagosPendientesGlobal.length === 0);
             } else {
                 alert('Este cliente no tiene deudas pendientes.');
                 resetUI();
@@ -170,8 +156,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function recalcularTotal() {
         const cant = parseInt(inputCant.value) || 0;
-        const total = cant * montoMensual;
-        document.getElementById('lblTotalCobro').textContent = `$${total.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        let totalBase = 0;
+        let totalMultas = 0;
+        
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0); 
+
+        for(let i=0; i < cant; i++) {
+            if(pagosPendientesGlobal[i]) {
+                let cuota = pagosPendientesGlobal[i];
+                let monto = parseFloat(cuota.monto);
+                totalBase += monto;
+                
+                let fechaVencimiento = new Date(cuota.fecha_vencimiento + "T00:00:00");
+                if(hoy > fechaVencimiento) {
+                    totalMultas += (monto * 0.10);
+                }
+            }
+        }
+        
+        let granTotal = totalBase + totalMultas;
+        document.getElementById('lblTotalCobro').textContent = `$${granTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+        
+        const lblMulta = document.getElementById('lblMultaDetalle');
+        if(totalMultas > 0) {
+            lblMulta.textContent = `Incluye $${totalMultas.toLocaleString(undefined, {minimumFractionDigits: 2})} de recargos (10%)`;
+            lblMulta.className = "small text-warning mt-1 fw-bold";
+        } else {
+            lblMulta.textContent = 'Sin recargos aplicados';
+            lblMulta.className = "small text-info mt-1";
+        }
     }
 
     inputCant.addEventListener('input', recalcularTotal);
@@ -179,15 +193,31 @@ document.addEventListener('DOMContentLoaded', function() {
     function actualizarTabla(historial) {
         const tbody = document.getElementById('tabla-historial');
         tbody.innerHTML = '';
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+
         historial.forEach(p => {
             const statusClass = p.estado === 'pagado' ? 'bg-success' : 'bg-warning text-dark';
+            let botonAccion = '';
+            let advertenciaVencido = '';
+
+            if (p.estado === 'pendiente') {
+                let fechaVenc = new Date(p.fecha_vencimiento + "T00:00:00");
+                if (hoy > fechaVenc) advertenciaVencido = '<br><small class="text-danger fw-bold">VENCIDO</small>';
+                botonAccion = '<i class="fas fa-clock text-muted" title="Pendiente de pago"></i>';
+            } else {
+                botonAccion = `<a href="/cajas/ticket/${p.id}" target="_blank" class="btn btn-sm btn-primary" title="Imprimir Ticket">
+                                  <i class="fas fa-print"></i> Ticket
+                               </a>`;
+            }
+
             tbody.innerHTML += `
                 <tr>
                     <td>${p.numero_pago}</td>
-                    <td>${p.fecha_vencimiento}</td>
+                    <td>${p.fecha_vencimiento} ${advertenciaVencido}</td>
                     <td>$${p.monto}</td>
                     <td><span class="badge ${statusClass}">${p.estado.toUpperCase()}</span></td>
-                    <td>${p.estado === 'pendiente' ? '<i class="fas fa-clock text-muted"></i>' : '<i class="fas fa-check-double text-success"></i>'}</td>
+                    <td>${botonAccion}</td>
                 </tr>
             `;
         });
@@ -196,18 +226,18 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetUI() {
         document.getElementById('info-deuda').style.display = 'none';
         document.getElementById('lblTotalCobro').textContent = '$0.00';
+        document.getElementById('lblMultaDetalle').textContent = 'Sin recargos aplicados';
+        document.getElementById('lblMultaDetalle').className = 'small text-info mt-1';
         document.getElementById('tabla-historial').innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">Selecciona un cliente para ver su historial</td></tr>';
         btnCobrar.disabled = true;
+        btnLiquidar.disabled = true;
     }
 
-    // 2. Procesar Cobro (AJAX)
-    btnCobrar.addEventListener('click', async function() {
-        if (!confirm('¿Confirmar registro de pago?')) return;
-
+    async function ejecutarPago(cantidadAPagar) {
         const payload = {
             _token: "{{ csrf_token() }}",
             cliente_id: clienteId,
-            mensualidades_a_pagar: inputCant.value,
+            mensualidades_a_pagar: cantidadAPagar,
             metodo_pago: document.getElementById('metodo_pago').value
         };
 
@@ -220,14 +250,36 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await res.json();
 
             if (data.success) {
+                // 1. PRIMERO ABRIMOS EL TICKET
+                if(data.pago_id) {
+                    let ticket = window.open(`/cajas/ticket/${data.pago_id}?cuotas=${data.cuotas_pagadas}&recargos=${data.total_recargos}`, '_blank');
+                    
+                    if(!ticket || ticket.closed || typeof ticket.closed == 'undefined') {
+                        alert('⚠️ El cobro fue exitoso, pero tu navegador bloqueó el ticket.\n\nPor favor, mira arriba a la derecha en la barra de direcciones y selecciona "Permitir siempre ventanas emergentes" para este sitio.');
+                    }
+                }
+
+                // 2. LUEGO MOSTRAMOS EL MENSAJE Y RECARGAMOS
                 alert('✅ ' + data.message);
                 window.location.reload();
+
             } else {
                 alert('❌ Error: ' + data.message);
             }
         } catch (e) {
             alert('⚠️ Error de conexión');
         }
+    }
+
+    btnCobrar.addEventListener('click', function() {
+        if (!confirm('¿Confirmar registro de pago?')) return;
+        ejecutarPago(inputCant.value);
+    });
+
+    btnLiquidar.addEventListener('click', function() {
+        let textTotal = document.getElementById('lblTotalCobro').textContent;
+        if (!confirm(`¿Estás seguro de liquidar la cuenta completa?`)) return;
+        ejecutarPago(pagosPendientesGlobal.length);
     });
 });
 </script>
